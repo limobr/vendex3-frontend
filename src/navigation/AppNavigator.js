@@ -21,7 +21,7 @@ import EmployeeBottomTabs from './EmployeeBottomTabs';
 import ManagerBottomTabs from './ManagerBottomTabs';
 
 // Import Product Screens
-import ShopProductsScreen from '../screens/owner/ShopProductsScreen';
+import ShopProductsScreen from '../screens/shared/ShopProductsScreen';
 import AddProductScreen from '../screens/owner/AddProductScreen';
 import ProductDetailScreen from '../screens/owner/ProductDetailScreen';
 import EditProductScreen from '../screens/owner/EditProductScreen';
