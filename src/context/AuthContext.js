@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }) => {
     if (AppState && typeof AppState.addEventListener === "function") {
       appStateSubscriptionRef.current = AppState.addEventListener(
         "change",
-        handleAppStateChange
+        handleAppStateChange,
       );
     } else {
       console.warn("AppState.addEventListener is not available");
@@ -145,11 +145,16 @@ export const AuthProvider = ({ children }) => {
       }
 
       const isConnected = await checkServerConnectivity();
-      console.log(`🌐 Server connectivity: ${isConnected ? "Online" : "Offline"}`);
+      console.log(
+        `🌐 Server connectivity: ${isConnected ? "Online" : "Offline"}`,
+      );
 
       if (isConnected && accessToken && userRef.current) {
         refreshAccessToken().then((tokenValid) => {
-          console.log("🔄 Token refresh on init:", tokenValid ? "success" : "failed");
+          console.log(
+            "🔄 Token refresh on init:",
+            tokenValid ? "success" : "failed",
+          );
         });
       }
     } catch (error) {
@@ -165,9 +170,11 @@ export const AuthProvider = ({ children }) => {
   const checkServerConnectivity = async () => {
     try {
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout")), 3000)
+        setTimeout(() => reject(new Error("Timeout")), 3000),
       );
-      const connectivityPromise = axios.get(`${API_URL}/health/`, { timeout: 3000 });
+      const connectivityPromise = axios.get(`${API_URL}/health/`, {
+        timeout: 3000,
+      });
       await Promise.race([connectivityPromise, timeoutPromise]);
       setIsOnline(true);
       isOnlineRef.current = true;
@@ -197,7 +204,10 @@ export const AuthProvider = ({ children }) => {
       console.log("❌ Token refresh failed:", error);
       setIsOnline(false);
       isOnlineRef.current = false;
-      if (error.response?.status === 401 || error.message === 'No refresh token') {
+      if (
+        error.response?.status === 401 ||
+        error.message === "No refresh token"
+      ) {
         await logout();
       }
       return false;
@@ -205,194 +215,271 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (identifier, password) => {
-  try {
-    console.log("🔐 Attempting login for:", identifier);
-    const online = await checkServerConnectivity();
-    if (!online) {
-      return {
-        success: false,
-        error: "Network error. Please check your connection and try again.",
-      };
-    }
-
-    const response = await axios.post(
-      `${API_URL}/auth/login/`,
-      {
-        username: identifier.trim(),
-        password,
-      },
-      { timeout: 30000 }
-    );
-
-    console.log("✅ Login response received:", response.data);
-
-    const { access, refresh } = response.data;
-    await tokenService.setAccessToken(access);
-    await tokenService.setRefreshToken(refresh);
-    setAuthToken(access);
-
-    let userData = response.data.user || {};
-
-    userData.requires_onboarding = response.data.requires_onboarding || false;
-    userData.requires_setup = response.data.requires_setup || false;
-    userData.is_first_login_complete = userData.is_first_login_complete ?? true;
-    userData.has_changed_temp_password = userData.has_changed_temp_password ?? true;
-    userData.assigned_shops = response.data.assigned_shops || [];
-
-    if (response.data.configuration) {
-      try {
-        await AsyncStorage.setItem('business_config', JSON.stringify(response.data.configuration));
-      } catch (e) { /* non-critical */ }
-    }
-
-    await setSecureItem("user_data", userData);
-
-    // Save user to local database
-    let localUserId = null;
     try {
-      const dbResult = await databaseService.UserService.saveUser({
-        ...userData,
-        server_id: String(userData.id),
-        last_login: new Date().toISOString(),
-        phone_number: userData.phone_number || "",
-        date_of_birth: userData.date_of_birth || null,
-        profile_picture: userData.profile_picture || null,
-        user_type: userData.user_type || "employee",
-        is_verified: userData.is_verified || false,
-        has_changed_temp_password: userData.has_changed_temp_password,
-        is_first_login_complete: userData.is_first_login_complete,
-      });
-
-      if (dbResult && dbResult.id) {
-        localUserId = dbResult.id;
-        await databaseService.UserService.setCurrentUser(localUserId);
-        const fullUser = await databaseService.UserService.getUserById(localUserId);
-        setUser(fullUser || userData);
-        userRef.current = fullUser || userData;
-      } else {
-        setUser(userData);
-        userRef.current = userData;
+      console.log("🔐 Attempting login for:", identifier);
+      const online = await checkServerConnectivity();
+      if (!online) {
+        return {
+          success: false,
+          error: "Network error. Please check your connection and try again.",
+        };
       }
-    } catch (dbError) {
-      console.warn("⚠️ Could not save user to local database:", dbError);
-      setUser(userData);
-      userRef.current = userData;
-    }
 
-    // Process assigned shops: create business, shop, employee records
-    if (userData.assigned_shops && userData.assigned_shops.length && localUserId) {
-      for (const shopInfo of userData.assigned_shops) {
-        const {
-          business_id,
-          business_name,
-          shop_id,
-          shop_name,
-          role_id,
-          employee_id,
-        } = shopInfo;
+      const response = await axios.post(
+        `${API_URL}/auth/login/`,
+        {
+          username: identifier.trim(),
+          password,
+        },
+        { timeout: 30000 },
+      );
 
-        // 1. Create business if not exists (using server_id as local id)
-        if (business_id && business_name) {
-          let existingBusiness = await databaseService.BusinessService.getBusinessByServerId(business_id);
-          if (!existingBusiness) {
-            await databaseService.BusinessService.createBusiness({
-              id: business_id,
-              server_id: business_id,
-              owner_id: userData.id,   // user may not be owner, but we need a value
-              name: business_name,
-              sync_status: 'synced',
-              is_dirty: 0,
-              is_active: 1,
-            });
-          }
-        } else {
-          console.warn(`⚠️ Missing business_id or business_name for shop ${shop_name}, skipping business creation`);
+      console.log("✅ Login response received:", response.data);
+
+      const { access, refresh } = response.data;
+      await tokenService.setAccessToken(access);
+      await tokenService.setRefreshToken(refresh);
+      setAuthToken(access);
+
+      let userData = response.data.user || {};
+
+      userData.requires_onboarding = response.data.requires_onboarding || false;
+      userData.requires_setup = response.data.requires_setup || false;
+      userData.is_first_login_complete =
+        userData.is_first_login_complete ?? true;
+      userData.has_changed_temp_password =
+        userData.has_changed_temp_password ?? true;
+      userData.assigned_shops = response.data.assigned_shops || [];
+
+      if (response.data.configuration) {
+        try {
+          await AsyncStorage.setItem(
+            "business_config",
+            JSON.stringify(response.data.configuration),
+          );
+        } catch (e) {
+          /* non-critical */
         }
+      }
 
-        // 2. Create shop if not exists (using server_id as local id)
-        if (shop_id && business_id) {
-          let existingShop = await databaseService.ShopService.getShopByServerId(shop_id);
-          if (!existingShop) {
-            await databaseService.ShopService.createShop({
-              id: shop_id,
-              server_id: shop_id,
-              business_id: business_id,   // business_id is the server UUID
-              name: shop_name,
-              sync_status: 'synced',
-              is_dirty: 0,
-              is_active: 1,
-            });
-          }
-        } else {
-          console.warn(`⚠️ Missing shop_id or business_id for shop ${shop_name}, skipping shop creation`);
-        }
+      await setSecureItem("user_data", userData);
 
-        // 3. Create employee if not exists
-        if (employee_id) {
-          let existingEmployee = await databaseService.EmployeeService.getEmployeeById(employee_id);
-          if (!existingEmployee) {
-            await databaseService.EmployeeService.createEmployee({
-              id: employee_id,
-              server_id: employee_id,
-              user_id: localUserId,
-              business_id: business_id,
-              shop_id: shop_id,
-              role_id: role_id,
-              first_name: userData.first_name || '',
-              last_name: userData.last_name || '',
+      // Save user to local database
+      let localUserId = null;
+      try {
+        const dbResult = await databaseService.UserService.saveUser({
+          ...userData,
+          server_id: String(userData.id),
+          last_login: new Date().toISOString(),
+          phone_number: userData.phone_number || "",
+          date_of_birth: userData.date_of_birth || null,
+          profile_picture: userData.profile_picture || null,
+          user_type: userData.user_type || "employee",
+          is_verified: userData.is_verified || false,
+          has_changed_temp_password: userData.has_changed_temp_password,
+          is_first_login_complete: userData.is_first_login_complete,
+        });
+
+        if (dbResult && dbResult.id) {
+          localUserId = dbResult.id;
+          await databaseService.UserService.setCurrentUser(localUserId);
+          const fullUser =
+            await databaseService.UserService.getUserById(localUserId);
+          if (fullUser) {
+            setUser(fullUser);
+            userRef.current = fullUser;
+          } else {
+            // Fallback: create a minimal user object with the local ID
+            const minimalUser = {
+              id: localUserId,
+              server_id: userData.id,
+              username: userData.username,
               email: userData.email,
-              phone_number: userData.phone_number || '',
-              employment_type: 'full_time',
+              first_name: userData.first_name,
+              last_name: userData.last_name,
+              user_type: userData.user_type || "employee",
+              phone_number: userData.phone_number || "",
+              profile_picture: userData.profile_picture || null,
               is_active: 1,
-              sync_status: 'synced',
-              is_dirty: 0,
-            });
+              is_verified: userData.is_verified || false,
+              has_changed_temp_password: userData.has_changed_temp_password,
+              is_first_login_complete: userData.is_first_login_complete,
+            };
+            setUser(minimalUser);
+            userRef.current = minimalUser;
           }
         } else {
-          console.warn(`⚠️ Missing employee_id for shop ${shop_name}, skipping employee creation`);
+          // If saving user failed (unlikely), create a new local user record
+          const newLocalId = nanoid();
+          const fallbackUser = {
+            id: newLocalId,
+            server_id: userData.id,
+            username: userData.username,
+            email: userData.email,
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+            user_type: userData.user_type || "employee",
+            phone_number: userData.phone_number || "",
+            profile_picture: userData.profile_picture || null,
+            is_active: 1,
+            is_verified: userData.is_verified || false,
+            has_changed_temp_password: userData.has_changed_temp_password,
+            is_first_login_complete: userData.is_first_login_complete,
+          };
+          await databaseService.UserService.saveUser(fallbackUser);
+          await databaseService.UserService.setCurrentUser(newLocalId);
+          setUser(fallbackUser);
+          userRef.current = fallbackUser;
+        }
+      } catch (dbError) {
+        console.warn("⚠️ Could not save user to local database:", dbError);
+        // As a last resort, use the server data but mark it as not local
+        const fallbackLocalId = nanoid();
+        const emergencyUser = {
+          id: fallbackLocalId,
+          server_id: userData.id,
+          ...userData,
+        };
+        setUser(emergencyUser);
+        userRef.current = emergencyUser;
+      }
+
+      // Process assigned shops: create business, shop, employee records
+      if (
+        userData.assigned_shops &&
+        userData.assigned_shops.length &&
+        localUserId
+      ) {
+        for (const shopInfo of userData.assigned_shops) {
+          const {
+            business_id,
+            business_name,
+            shop_id,
+            shop_name,
+            role_id,
+            employee_id,
+          } = shopInfo;
+
+          // 1. Create business if not exists (using server_id as local id)
+          if (business_id && business_name) {
+            let existingBusiness =
+              await databaseService.BusinessService.getBusinessByServerId(
+                business_id,
+              );
+            if (!existingBusiness) {
+              await databaseService.BusinessService.createBusiness({
+                id: business_id,
+                server_id: business_id,
+                owner_id: localUserId, // user may not be owner, but we need a value
+                name: business_name,
+                sync_status: "synced",
+                is_dirty: 0,
+                is_active: 1,
+              });
+            }
+          } else {
+            console.warn(
+              `⚠️ Missing business_id or business_name for shop ${shop_name}, skipping business creation`,
+            );
+          }
+
+          // 2. Create shop if not exists (using server_id as local id)
+          if (shop_id && business_id) {
+            let existingShop =
+              await databaseService.ShopService.getShopByServerId(shop_id);
+            if (!existingShop) {
+              await databaseService.ShopService.createShop({
+                id: shop_id,
+                server_id: shop_id,
+                business_id: business_id, // business_id is the server UUID
+                name: shop_name,
+                sync_status: "synced",
+                is_dirty: 0,
+                is_active: 1,
+              });
+            }
+          } else {
+            console.warn(
+              `⚠️ Missing shop_id or business_id for shop ${shop_name}, skipping shop creation`,
+            );
+          }
+
+          // 3. Create employee if not exists
+          if (employee_id) {
+            let existingEmployee =
+              await databaseService.EmployeeService.getEmployeeById(
+                employee_id,
+              );
+            if (!existingEmployee) {
+              await databaseService.EmployeeService.createEmployee({
+                id: employee_id,
+                server_id: employee_id,
+                user_id: localUserId,
+                business_id: business_id,
+                shop_id: shop_id,
+                role_id: role_id,
+                first_name: userData.first_name || "",
+                last_name: userData.last_name || "",
+                email: userData.email,
+                phone_number: userData.phone_number || "",
+                employment_type: "full_time",
+                is_active: 1,
+                sync_status: "synced",
+                is_dirty: 0,
+              });
+            }
+          } else {
+            console.warn(
+              `⚠️ Missing employee_id for shop ${shop_name}, skipping employee creation`,
+            );
+          }
+        }
+
+        // Set current shop to the first assigned shop
+        const firstShop = userData.assigned_shops[0];
+        if (firstShop.shop_id) {
+          await databaseService.ShopService.setCurrentShop(firstShop.shop_id);
+          const currentShopData = await databaseService.ShopService.getShopById(
+            firstShop.shop_id,
+          );
+          setCurrentShop(currentShopData);
+          currentShopRef.current = currentShopData;
         }
       }
 
-      // Set current shop to the first assigned shop
-      const firstShop = userData.assigned_shops[0];
-      if (firstShop.shop_id) {
-        await databaseService.ShopService.setCurrentShop(firstShop.shop_id);
-        const currentShopData = await databaseService.ShopService.getShopById(firstShop.shop_id);
-        setCurrentShop(currentShopData);
-        currentShopRef.current = currentShopData;
+      setIsOnline(true);
+      isOnlineRef.current = true;
+      console.log("✅ Login successful for user:", userData.username);
+
+      const existingPin = await getSecureItem("vendex_pin");
+      if (existingPin) setIsPinSet(true);
+
+      return { success: true, user: userData };
+    } catch (error) {
+      console.log("❌ Login failed:", error);
+
+      let errorMsg = "Invalid credentials";
+      let passwordExpired = false;
+
+      if (error.response?.data?.detail) {
+        errorMsg = error.response.data.detail;
+        if (error.response.data.password_expired) {
+          passwordExpired = true;
+        }
+      } else if (error.response?.data?.non_field_errors) {
+        errorMsg = error.response.data.non_field_errors[0];
+      } else if (
+        error.message.includes("Network Error") ||
+        error.message.includes("Timeout")
+      ) {
+        errorMsg = "Network error. Please check your connection.";
+      } else if (error.message.includes("SecureStore")) {
+        errorMsg = "Storage error. Please try again.";
       }
+
+      return { success: false, error: errorMsg, passwordExpired };
     }
-
-    setIsOnline(true);
-    isOnlineRef.current = true;
-    console.log("✅ Login successful for user:", userData.username);
-
-    const existingPin = await getSecureItem("vendex_pin");
-    if (existingPin) setIsPinSet(true);
-
-    return { success: true, user: userData };
-  } catch (error) {
-    console.log("❌ Login failed:", error);
-
-    let errorMsg = "Invalid credentials";
-    let passwordExpired = false;
-
-    if (error.response?.data?.detail) {
-      errorMsg = error.response.data.detail;
-      if (error.response.data.password_expired) {
-        passwordExpired = true;
-      }
-    } else if (error.response?.data?.non_field_errors) {
-      errorMsg = error.response.data.non_field_errors[0];
-    } else if (error.message.includes("Network Error") || error.message.includes("Timeout")) {
-      errorMsg = "Network error. Please check your connection.";
-    } else if (error.message.includes("SecureStore")) {
-      errorMsg = "Storage error. Please try again.";
-    }
-
-    return { success: false, error: errorMsg, passwordExpired };
-  }
-};
+  };
 
   const loginOffline = async (username, pin) => {
     try {
@@ -400,7 +487,7 @@ export const AuthProvider = ({ children }) => {
       const db = await databaseService.openDatabase();
       const user = await db.getFirstAsync(
         "SELECT * FROM users WHERE username = ? AND is_active = 1",
-        [username]
+        [username],
       );
       if (!user) return { success: false, error: "User not found locally" };
 
@@ -427,7 +514,10 @@ export const AuthProvider = ({ children }) => {
       setIsPinSet(true);
       setPinAttempts(0);
       if (user) {
-        await databaseService.UserProfileService.updateProfile(String(user.id), { pin_hash: pin });
+        await databaseService.UserProfileService.updateProfile(
+          String(user.id),
+          { pin_hash: pin },
+        );
       }
       console.log("✅ PIN set successfully");
       return { success: true };
@@ -449,7 +539,10 @@ export const AuthProvider = ({ children }) => {
         setPinAttempts(0);
         if (isOnlineRef.current) {
           refreshAccessToken().then((success) => {
-            console.log("🔄 Background token refresh:", success ? "success" : "failed");
+            console.log(
+              "🔄 Background token refresh:",
+              success ? "success" : "failed",
+            );
           });
         }
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -495,7 +588,10 @@ export const AuthProvider = ({ children }) => {
         setPinAttempts(0);
         if (isOnlineRef.current) {
           refreshAccessToken().then((success) => {
-            console.log("🔄 Background token refresh:", success ? "success" : "failed");
+            console.log(
+              "🔄 Background token refresh:",
+              success ? "success" : "failed",
+            );
           });
         }
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -528,7 +624,7 @@ export const AuthProvider = ({ children }) => {
       Alert.alert(
         "Security Alert",
         "Too many wrong PIN attempts. All app data has been wiped for security.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
       );
       console.log("✅ Emergency wipe completed");
     } catch (error) {

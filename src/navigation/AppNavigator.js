@@ -27,6 +27,13 @@ import ProductDetailScreen from '../screens/owner/ProductDetailScreen';
 import EditProductScreen from '../screens/owner/EditProductScreen';
 import ReceiptTemplateScreen from '../screens/owner/ReceiptTemplateScreen';
 
+// Import Inventory Screens (NEW)
+import StockMovementsScreen from '../screens/shared/StockMovementsScreen';
+import PriceHistoryScreen from '../screens/shared/PriceHistoryScreen';
+import ViewInventoryScreen from '../screens/shared/ViewInventoryScreen';
+import UpdateStockScreen from '../screens/shared/UpdateStockScreen';
+import RestockItemsScreen from '../screens/shared/RestockItemsScreen';
+
 const Stack = createNativeStackNavigator();
 
 // Component to determine which navigator to show based on user type
@@ -211,6 +218,28 @@ export default function AppNavigator() {
           <Stack.Screen 
             name="ReceiptTemplate" 
             component={ReceiptTemplateScreen}
+          />
+
+          {/* Inventory Management Screens (NEW) */}
+          <Stack.Screen 
+            name="StockMovements" 
+            component={StockMovementsScreen}
+          />
+          <Stack.Screen 
+            name="PriceHistory" 
+            component={PriceHistoryScreen}
+          />
+          <Stack.Screen 
+            name="ViewInventory" 
+            component={ViewInventoryScreen}
+          />
+          <Stack.Screen 
+            name="UpdateStock" 
+            component={UpdateStockScreen}
+          />
+          <Stack.Screen 
+            name="RestockItems" 
+            component={RestockItemsScreen}
           />
         </>
       )}

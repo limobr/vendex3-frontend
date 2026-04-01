@@ -83,7 +83,6 @@ export const ShopProvider = ({ children }) => {
   };
 
   // Create new shop - ONLINE FIRST approach
-  // src/context/ShopContext.js - Update createShop method
   const createShop = async (shopData) => {
     try {
       if (!user) {
@@ -115,7 +114,7 @@ export const ShopProvider = ({ children }) => {
 
       console.log("🏪 Creating new shop online:", shopData.name);
 
-      // 1. GET THE CORRECT BUSINESS UUID FROM LOCAL DATABASE
+      // 1. GET THE CORRECT BUSINESS FROM LOCAL DATABASE
       const localBusiness =
         await databaseService.BusinessService.getBusinessById(
           shopData.business_id
@@ -161,12 +160,13 @@ export const ShopProvider = ({ children }) => {
         ...shopData,
         id: serverResponse.shop.id,
         server_id: serverResponse.shop.id,
+        business_id: localBusiness.id,                 // ✅ Use local business ID
+        business_server_id: localBusiness.server_id,   // ✅ Store server UUID for reference
         sync_status: "synced",
         is_dirty: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         is_active: 1,
-        business_id: localBusiness.server_id,
       };
 
       console.log("💾 Saving shop locally with ID:", serverResponse.shop.id);
@@ -263,100 +263,100 @@ export const ShopProvider = ({ children }) => {
 
   // Update shop (REQUIRES ONLINE)
   const updateShop = async (shopId, updates) => {
-  try {
-    console.log("📝 Updating shop:", shopId);
+    try {
+      console.log("📝 Updating shop:", shopId);
 
-    // Check if user is online
-    const online = await checkNetwork();
-    if (!online) {
+      // Check if user is online
+      const online = await checkNetwork();
+      if (!online) {
+        return {
+          success: false,
+          error: "You must be online to update shop details.",
+          requiresOnline: true,
+        };
+      }
+
+      // Get shop to check if it has server_id
+      const shop = await databaseService.ShopService.getShopById(shopId);
+      if (!shop) {
+        throw new Error("Shop not found");
+      }
+
+      // If shop has server_id, use it for API call
+      const apiShopId = shop.server_id || shopId;
+
+      // Get auth token
+      let token = authToken;
+      if (!token) {
+        token = await getAuthToken();
+      }
+
+      if (!token) {
+        throw new Error("Authentication token is missing");
+      }
+
+      console.log("🔄 Updating shop on server:", apiShopId);
+
+      // Update on server first
+      const serverResponse = await updateShopOnServer(apiShopId, updates, token);
+
+      if (!serverResponse.success) {
+        throw new Error(
+          serverResponse.error || "Failed to update shop on server"
+        );
+      }
+
+      // Update locally WITHOUT marking as pending sync
+      console.log("💾 Updating shop locally (marking as synced)...");
+
+      // Use a direct database query to update without marking as dirty
+      const db = await databaseService.openDatabase();
+      const now = new Date().toISOString();
+
+      // Build the update query
+      const fields = Object.keys(updates);
+      const values = fields.map((field) => {
+        if (field === "tax_rate") {
+          return parseFloat(updates[field]) || 0.0;
+        }
+        return updates[field];
+      });
+
+      const setClause = fields.map((field) => `${field} = ?`).join(", ");
+
+      // Update WITHOUT marking as pending - this is the key change!
+      await db.runAsync(
+        `UPDATE shops SET ${setClause}, updated_at = ?, sync_status = 'synced', is_dirty = 0 WHERE id = ?`,
+        [...values, now, String(shopId)]
+      );
+
+      console.log("✅ Shop updated successfully and marked as synced:", shopId);
+
+      // Get the updated shop
+      const updatedShop = await databaseService.ShopService.getShopById(shopId);
+
+      // Update local state
+      setShops((prev) =>
+        prev.map((s) => (s.id === shopId ? updatedShop : s))
+      );
+
+      if (currentShop?.id === shopId) {
+        setCurrentShop(updatedShop);
+      }
+
+      return {
+        success: true,
+        shop: updatedShop,
+        message: "Shop updated successfully!",
+      };
+    } catch (error) {
+      console.error("❌ Error updating shop:", error);
       return {
         success: false,
-        error: "You must be online to update shop details.",
-        requiresOnline: true,
+        error: error.message,
       };
     }
-
-    // Get shop to check if it has server_id
-    const shop = await databaseService.ShopService.getShopById(shopId);
-    if (!shop) {
-      throw new Error("Shop not found");
-    }
-
-    // If shop has server_id, use it for API call
-    const apiShopId = shop.server_id || shopId;
-
-    // Get auth token
-    let token = authToken;
-    if (!token) {
-      token = await getAuthToken();
-    }
-
-    if (!token) {
-      throw new Error("Authentication token is missing");
-    }
-
-    console.log("🔄 Updating shop on server:", apiShopId);
-
-    // Update on server first
-    const serverResponse = await updateShopOnServer(apiShopId, updates, token);
-
-    if (!serverResponse.success) {
-      throw new Error(
-        serverResponse.error || "Failed to update shop on server"
-      );
-    }
-
-    // CRITICAL FIX: Update locally WITHOUT marking as pending sync
-    console.log("💾 Updating shop locally (marking as synced)...");
-    
-    // Use a direct database query to update without marking as dirty
-    const db = await databaseService.openDatabase();
-    const now = new Date().toISOString();
-    
-    // Build the update query
-    const fields = Object.keys(updates);
-    const values = fields.map((field) => {
-      if (field === "tax_rate") {
-        return parseFloat(updates[field]) || 0.0;
-      }
-      return updates[field];
-    });
-    
-    const setClause = fields.map((field) => `${field} = ?`).join(", ");
-    
-    // Update WITHOUT marking as pending - this is the key change!
-    await db.runAsync(
-      `UPDATE shops SET ${setClause}, updated_at = ?, sync_status = 'synced', is_dirty = 0 WHERE id = ?`,
-      [...values, now, String(shopId)]
-    );
-
-    console.log("✅ Shop updated successfully and marked as synced:", shopId);
-
-    // Get the updated shop
-    const updatedShop = await databaseService.ShopService.getShopById(shopId);
-
-    // Update local state
-    setShops((prev) =>
-      prev.map((s) => (s.id === shopId ? updatedShop : s))
-    );
-
-    if (currentShop?.id === shopId) {
-      setCurrentShop(updatedShop);
-    }
-
-    return {
-      success: true,
-      shop: updatedShop,
-      message: "Shop updated successfully!",
-    };
-  } catch (error) {
-    console.error("❌ Error updating shop:", error);
-    return {
-      success: false,
-      error: error.message,
-    };
-  }
-};
+  };
 
   // Update shop on server
   const updateShopOnServer = async (shopId, updates, token) => {
@@ -550,6 +550,17 @@ export const ShopProvider = ({ children }) => {
         throw new Error("Authentication required");
       }
 
+      // First, find the local business that matches this server ID
+      const localBusiness = await databaseService.BusinessService.getBusinessByServerId(
+        businessServerId
+      );
+      if (!localBusiness) {
+        throw new Error(
+          `Local business not found for server ID: ${businessServerId}`
+        );
+      }
+      const localBusinessId = localBusiness.id;
+
       const response = await fetch(
         `${apiUrl}/shops/shops/?business_id=${businessServerId}`,
         {
@@ -571,7 +582,8 @@ export const ShopProvider = ({ children }) => {
           const localShop = {
             id: serverShop.id, // Use server UUID as local ID
             server_id: serverShop.id,
-            business_id: businessServerId,
+            business_id: localBusinessId,               // ✅ Use local business ID
+            business_server_id: businessServerId,       // ✅ Store server UUID
             name: serverShop.name,
             shop_type: serverShop.shop_type,
             location: serverShop.location,
@@ -590,7 +602,7 @@ export const ShopProvider = ({ children }) => {
         }
 
         // Reload local shops
-        await loadShops(businessServerId);
+        await loadShops(localBusinessId);
 
         return {
           success: true,

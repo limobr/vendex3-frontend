@@ -1,4 +1,3 @@
-// src/navigation/EmployeeBottomTabs.js
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,7 +5,8 @@ import { View, StyleSheet } from 'react-native';
 
 // Employee Screens
 import DashboardScreen from '../screens/employee/DashboardScreen';
-import POSScreen from '../screens/employee/POSScreen'; // The new POS screen (replaces Products)
+import POSScreen from '../screens/employee/POSScreen'; // The POS screen
+import InventoryScreen from '../screens/shared/InventoryScreen'; // <-- NEW
 import CustomersScreen from '../screens/employee/CustomersScreen';
 import SalesHistoryScreen from '../screens/employee/SalesHistoryScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
@@ -40,6 +40,9 @@ export default function EmployeeBottomTabs() {
           switch (route.name) {
             case 'Dashboard':
               iconName = focused ? 'home' : 'home-outline';
+              break;
+            case 'Inventory':               // <-- NEW
+              iconName = focused ? 'cube' : 'cube-outline';
               break;
             case 'POS':
               iconName = focused ? 'cart' : 'cart-outline';
@@ -78,6 +81,14 @@ export default function EmployeeBottomTabs() {
         options={{ 
           title: 'Home',
           tabBarTestID: 'employee-dashboard-tab',
+        }}
+      />
+      <Tab.Screen
+        name="Inventory"                 // <-- NEW TAB
+        component={InventoryScreen}
+        options={{
+          title: 'Inventory',
+          tabBarTestID: 'employee-inventory-tab',
         }}
       />
       <Tab.Screen

@@ -38,17 +38,18 @@ class ShopService extends BaseService {
         throw new Error(errors.join(', '));
       }
 
-      // Insert new shop with UUID as primary ID
+      // Insert new shop with UUID as primary ID and both business_id and business_server_id
       await db.runAsync(
         `INSERT INTO shops (
-          id, server_id, business_id, name, shop_type, location, 
+          id, server_id, business_id, business_server_id, name, shop_type, location, 
           phone_number, email, tax_rate, currency, 
           is_active, created_at, updated_at, sync_status, is_dirty
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          shopId,                    // Use UUID as primary ID
-          shopData.server_id || shopId, // Also store in server_id
-          shopData.business_id,
+          shopId,                                    // Use UUID as primary ID
+          shopData.server_id || shopId,              // Also store in server_id
+          shopData.business_id,                      // Local business ID
+          shopData.business_server_id || null,       // Server business UUID
           shopData.name,
           shopData.shop_type || 'retail',
           shopData.location,
@@ -83,9 +84,10 @@ class ShopService extends BaseService {
       const db = await this.getDatabase();
       const now = this.getCurrentTimestamp();
 
-      // Only allow updates to Django model fields
+      // Only allow updates to Django model fields plus business_server_id
       const allowedFields = ['name', 'shop_type', 'location', 'phone_number', 'email', 
-                            'tax_rate', 'currency', 'is_active', 'server_id', 'sync_status', 'is_dirty'];
+                            'tax_rate', 'currency', 'is_active', 'server_id', 
+                            'business_server_id', 'sync_status', 'is_dirty'];
       const updateFields = [];
       const updateValues = [];
 
@@ -135,16 +137,34 @@ class ShopService extends BaseService {
     }
   }
 
-  // Get all shops for business (by local business ID)
+  // Get all shops for business (by local business ID, enhanced to also match business_server_id)
   async getShopsByBusiness(businessId) {
     try {
       const db = await this.getDatabase();
-      const shops = await db.getAllAsync(
-        `SELECT * FROM shops 
-         WHERE business_id = ? AND is_active = 1 
-         ORDER BY created_at DESC`,
+      // First, get the business to find its server ID
+      const business = await db.getFirstAsync(
+        'SELECT id, server_id FROM businesses WHERE id = ?',
         [businessId]
       );
+      
+      let shops = [];
+      if (business && business.server_id) {
+        // Query using both business_id (local) and business_server_id (server)
+        shops = await db.getAllAsync(
+          `SELECT * FROM shops 
+           WHERE (business_id = ? OR business_server_id = ?) AND is_active = 1 
+           ORDER BY created_at DESC`,
+          [businessId, business.server_id]
+        );
+      } else {
+        // Fallback: only by local business_id
+        shops = await db.getAllAsync(
+          `SELECT * FROM shops 
+           WHERE business_id = ? AND is_active = 1 
+           ORDER BY created_at DESC`,
+          [businessId]
+        );
+      }
 
       // For each shop, get employee count
       for (let shop of shops) {
@@ -168,7 +188,7 @@ class ShopService extends BaseService {
       const db = await this.getDatabase();
       const shops = await db.getAllAsync(
         `SELECT * FROM shops 
-         WHERE business_id = ? AND is_active = 1 
+         WHERE business_server_id = ? AND is_active = 1 
          ORDER BY created_at DESC`,
         [businessServerId]
       );
@@ -199,13 +219,13 @@ class ShopService extends BaseService {
       );
 
       if (shop) {
-        // Get business info
+        // Get business info - try both local and server ID matching
         const business = await db.getFirstAsync(
           'SELECT name, server_id FROM businesses WHERE id = ? OR server_id = ?',
-          [shop.business_id, shop.business_id]
+          [shop.business_id, shop.business_server_id || shop.business_id]
         );
         shop.business_name = business?.name || '';
-        shop.business_server_id = business?.server_id || '';
+        shop.business_server_id = business?.server_id || shop.business_server_id;
 
         // Get employee count
         const employeeCount = await db.getFirstAsync(

@@ -1,4 +1,3 @@
-// src/navigation/OwnerBottomTabs.js
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
@@ -8,7 +7,7 @@ import { View, StyleSheet } from "react-native";
 // Owner Screens
 import OwnerDashboardScreen from "../screens/owner/DashboardScreen";
 import OwnerBusinessStack from "./OwnerBusinessStack";
-import ProductsManagementScreen from "../screens/owner/ProductsManagementScreen";
+import InventoryScreen from "../screens/shared/InventoryScreen"; // <-- NEW
 import ReportsScreen from "../screens/owner/ReportsScreen";
 import ProfileScreen from "../screens/shared/ProfileScreen";
 import OwnerEmployeesStack from "./OwnerEmployeesStack";
@@ -65,7 +64,7 @@ export default function OwnerBottomTabs() {
             case "Businesses":
               iconName = focused ? "business" : "business-outline";
               break;
-            case "Products":
+            case "Inventory":               // <-- CHANGED
               iconName = focused ? "cube" : "cube-outline";
               break;
             case "Employees":
@@ -111,9 +110,9 @@ export default function OwnerBottomTabs() {
         })}
       />
       <Tab.Screen
-        name="Products"
-        component={ProductsManagementScreen}
-        options={{ title: "Products", tabBarTestID: "owner-products-tab" }}
+        name="Inventory"                 // <-- REPLACED "Products"
+        component={InventoryScreen}      // <-- NEW component
+        options={{ title: "Inventory", tabBarTestID: "owner-inventory-tab" }}
       />
       <Tab.Screen
         name="Employees"

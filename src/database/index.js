@@ -2,6 +2,7 @@
 import * as SQLite from "expo-sqlite";
 import { nanoid } from "nanoid/non-secure";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as uuid from "uuid";
 
 // Database instance
 let database = null;
@@ -33,22 +34,42 @@ const normalizeIds = (data) => {
   const normalized = { ...data };
   // Convert common ID fields to strings
   if (normalized.id !== undefined) normalized.id = ensureStringId(normalized.id);
-  if (normalized.server_id !== undefined) normalized.server_id = ensureStringId(normalized.server_id);
-  if (normalized.user_id !== undefined) normalized.user_id = ensureStringId(normalized.user_id);
-  if (normalized.business_id !== undefined) normalized.business_id = ensureStringId(normalized.business_id);
-  if (normalized.shop_id !== undefined) normalized.shop_id = ensureStringId(normalized.shop_id);
-  if (normalized.product_id !== undefined) normalized.product_id = ensureStringId(normalized.product_id);
-  if (normalized.category_id !== undefined) normalized.category_id = ensureStringId(normalized.category_id);
-  if (normalized.customer_id !== undefined) normalized.customer_id = ensureStringId(normalized.customer_id);
-  if (normalized.sale_id !== undefined) normalized.sale_id = ensureStringId(normalized.sale_id);
-  if (normalized.role_id !== undefined) normalized.role_id = ensureStringId(normalized.role_id);
-  if (normalized.employee_id !== undefined) normalized.employee_id = ensureStringId(normalized.employee_id);
-  if (normalized.tax_id !== undefined) normalized.tax_id = ensureStringId(normalized.tax_id);
-  if (normalized.parent_id !== undefined) normalized.parent_id = ensureStringId(normalized.parent_id);
-  if (normalized.attribute_id !== undefined) normalized.attribute_id = ensureStringId(normalized.attribute_id);
-  if (normalized.variant_id !== undefined) normalized.variant_id = ensureStringId(normalized.variant_id);
-  if (normalized.created_by !== undefined) normalized.created_by = ensureStringId(normalized.created_by);
-  if (normalized.changed_by !== undefined) normalized.changed_by = ensureStringId(normalized.changed_by);
+  if (normalized.server_id !== undefined)
+    normalized.server_id = ensureStringId(normalized.server_id);
+  if (normalized.user_id !== undefined)
+    normalized.user_id = ensureStringId(normalized.user_id);
+  if (normalized.business_id !== undefined)
+    normalized.business_id = ensureStringId(normalized.business_id);
+  if (normalized.shop_id !== undefined)
+    normalized.shop_id = ensureStringId(normalized.shop_id);
+  if (normalized.product_id !== undefined)
+    normalized.product_id = ensureStringId(normalized.product_id);
+  if (normalized.category_id !== undefined)
+    normalized.category_id = ensureStringId(normalized.category_id);
+  if (normalized.customer_id !== undefined)
+    normalized.customer_id = ensureStringId(normalized.customer_id);
+  if (normalized.sale_id !== undefined)
+    normalized.sale_id = ensureStringId(normalized.sale_id);
+  if (normalized.role_id !== undefined)
+    normalized.role_id = ensureStringId(normalized.role_id);
+  if (normalized.employee_id !== undefined)
+    normalized.employee_id = ensureStringId(normalized.employee_id);
+  if (normalized.tax_id !== undefined)
+    normalized.tax_id = ensureStringId(normalized.tax_id);
+  if (normalized.parent_id !== undefined)
+    normalized.parent_id = ensureStringId(normalized.parent_id);
+  if (normalized.attribute_id !== undefined)
+    normalized.attribute_id = ensureStringId(normalized.attribute_id);
+  if (normalized.variant_id !== undefined)
+    normalized.variant_id = ensureStringId(normalized.variant_id);
+  if (normalized.created_by !== undefined)
+    normalized.created_by = ensureStringId(normalized.created_by);
+  if (normalized.changed_by !== undefined)
+    normalized.changed_by = ensureStringId(normalized.changed_by);
+  if (normalized.inventory_id !== undefined)
+    normalized.inventory_id = ensureStringId(normalized.inventory_id);
+  if (normalized.performed_by !== undefined)
+    normalized.performed_by = ensureStringId(normalized.performed_by);
 
   return normalized;
 };
@@ -373,7 +394,7 @@ export const initializeDatabase = async () => {
       );
     `);
 
-    // Create inventory table
+    // Create inventory table (updated with last_movement and is_locked)
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS inventory (
         id TEXT PRIMARY KEY,
@@ -386,6 +407,8 @@ export const initializeDatabase = async () => {
         minimum_stock INTEGER DEFAULT 0,
         maximum_stock INTEGER,
         last_restocked TEXT,
+        last_movement TEXT,
+        is_locked INTEGER DEFAULT 0,
         is_active INTEGER DEFAULT 1,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -400,6 +423,39 @@ export const initializeDatabase = async () => {
           (product_id IS NULL AND variant_id IS NOT NULL)
         )
       );
+    `);
+
+    // Create stock_movements table (NEW)
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS stock_movements (
+        id TEXT PRIMARY KEY,
+        server_id TEXT,
+        inventory_id TEXT NOT NULL,
+        shop_id TEXT NOT NULL,
+        product_id TEXT,
+        variant_id TEXT,
+        movement_type TEXT NOT NULL,
+        quantity INTEGER NOT NULL,
+        reference TEXT,
+        reason TEXT,
+        performed_by TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        synced_at TEXT,
+        sync_status TEXT DEFAULT 'pending',
+        is_dirty INTEGER DEFAULT 0,
+        FOREIGN KEY (inventory_id) REFERENCES inventory (id) ON DELETE CASCADE,
+        FOREIGN KEY (shop_id) REFERENCES shops (id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
+        FOREIGN KEY (variant_id) REFERENCES product_variants (id) ON DELETE CASCADE,
+        FOREIGN KEY (performed_by) REFERENCES users (id) ON DELETE SET NULL
+      );
+    `);
+
+    // Create indexes for stock_movements
+    await db.execAsync(`
+      CREATE INDEX IF NOT EXISTS idx_stock_movements_inventory ON stock_movements(inventory_id);
+      CREATE INDEX IF NOT EXISTS idx_stock_movements_shop ON stock_movements(shop_id);
+      CREATE INDEX IF NOT EXISTS idx_stock_movements_created ON stock_movements(created_at);
     `);
 
     // Create price_history table
@@ -914,6 +970,56 @@ export const migrateDatabase = async () => {
       console.log("✅ Added business_server_id column to products table");
     }
 
+    // --- Add new columns to inventory table ---
+    const inventoryColumns = await db.getAllAsync("PRAGMA table_info(inventory)");
+    const inventoryColNames = inventoryColumns.map(col => col.name);
+
+    if (!inventoryColNames.includes('last_movement')) {
+      await db.execAsync("ALTER TABLE inventory ADD COLUMN last_movement TEXT");
+      console.log("✅ Added last_movement column to inventory table");
+    }
+    if (!inventoryColNames.includes('is_locked')) {
+      await db.execAsync("ALTER TABLE inventory ADD COLUMN is_locked INTEGER DEFAULT 0");
+      console.log("✅ Added is_locked column to inventory table");
+    }
+
+    // --- Create stock_movements table if not exists ---
+    const stockMovementsExists = await db.getAllAsync("PRAGMA table_info(stock_movements)");
+    if (!stockMovementsExists || stockMovementsExists.length === 0) {
+      await db.execAsync(`
+        CREATE TABLE stock_movements (
+          id TEXT PRIMARY KEY,
+          server_id TEXT,
+          inventory_id TEXT NOT NULL,
+          shop_id TEXT NOT NULL,
+          product_id TEXT,
+          variant_id TEXT,
+          movement_type TEXT NOT NULL,
+          quantity INTEGER NOT NULL,
+          reference TEXT,
+          reason TEXT,
+          performed_by TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          synced_at TEXT,
+          sync_status TEXT DEFAULT 'pending',
+          is_dirty INTEGER DEFAULT 0,
+          FOREIGN KEY (inventory_id) REFERENCES inventory (id) ON DELETE CASCADE,
+          FOREIGN KEY (shop_id) REFERENCES shops (id) ON DELETE CASCADE,
+          FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
+          FOREIGN KEY (variant_id) REFERENCES product_variants (id) ON DELETE CASCADE,
+          FOREIGN KEY (performed_by) REFERENCES users (id) ON DELETE SET NULL
+        )
+      `);
+      console.log("✅ Created stock_movements table");
+
+      // Create indexes
+      await db.execAsync(`
+        CREATE INDEX IF NOT EXISTS idx_stock_movements_inventory ON stock_movements(inventory_id);
+        CREATE INDEX IF NOT EXISTS idx_stock_movements_shop ON stock_movements(shop_id);
+        CREATE INDEX IF NOT EXISTS idx_stock_movements_created ON stock_movements(created_at);
+      `);
+    }
+
     console.log("✅ Database migration completed");
     return true;
   } catch (error) {
@@ -1113,6 +1219,10 @@ const BaseService = {
     }
   },
 };
+
+// ======================
+// USER SERVICES
+// ======================
 
 // User Service
 export const UserService = {
@@ -3421,7 +3531,7 @@ export const TaxService = {
       const now = new Date().toISOString();
 
       // Use server_id as local id for UUID consistency
-      const taxId = normalizedData.server_id || normalizedData.id || uuidv4();
+      const taxId = normalizedData.server_id || normalizedData.id || uuid.v4();
       
       // Check if tax already exists
       const existingTax = await db.getFirstAsync(
@@ -3556,7 +3666,7 @@ export const TaxService = {
       for (const taxData of defaultTaxes) {
         await TaxService.saveTax({
           ...taxData,
-          id: uuidv4(),
+          id: uuid.v4(),
         });
       }
 
@@ -3592,7 +3702,7 @@ export const CategoryService = {
       }
 
       // Use server_id as local id for UUID consistency
-      const categoryId = normalizedData.server_id || normalizedData.id || uuidv4();
+      const categoryId = normalizedData.server_id || normalizedData.id || uuid.v4();
       
       // Check if category already exists
       const existingCategory = await db.getFirstAsync(
@@ -3803,7 +3913,7 @@ export const ProductService = {
     try {
       const db = await openDatabase();
       const normalizedData = normalizeIds(productData);
-      const productId = normalizedData.id || uuidv4();
+      const productId = normalizedData.id || uuid.v4();
       const now = new Date().toISOString();
 
       // Verify user has access to the business
@@ -4354,7 +4464,7 @@ export const ProductService = {
         return { success: true, id: existingProduct.id, action: "updated" };
       } else {
         // Create new product
-        const productId = uuidv4();
+        const productId = uuid.v4();
 
         // Get business server_id if available
         let businessServerId = normalizedData.business;
@@ -4428,7 +4538,7 @@ export const ProductAttributeService = {
         throw new Error("Product not found or access denied");
       }
 
-      const attributeId = normalizedData.server_id || normalizedData.id || uuidv4();
+      const attributeId = normalizedData.server_id || normalizedData.id || uuid.v4();
       
       // Check if attribute exists
       const existingAttribute = await db.getFirstAsync(
@@ -4549,7 +4659,7 @@ export const ProductAttributeValueService = {
         }
       }
 
-      const valueId = normalizedData.server_id || normalizedData.id || uuidv4();
+      const valueId = normalizedData.server_id || normalizedData.id || uuid.v4();
       
       // Check if value exists
       const existingValue = await db.getFirstAsync(
@@ -4625,7 +4735,7 @@ export const ProductVariantService = {
         throw new Error("Product not found or access denied");
       }
 
-      const variantId = normalizedData.server_id || normalizedData.id || uuidv4();
+      const variantId = normalizedData.server_id || normalizedData.id || uuid.v4();
       
       // Check if variant exists
       const existingVariant = await db.getFirstAsync(
@@ -4742,9 +4852,117 @@ export const ProductVariantService = {
   },
 };
 
-// UPDATED: Inventory Service (with product/variant support)
+// NEW: StockMovement Service
+export const StockMovementService = {
+  // Create a stock movement record
+  createMovement: async (movementData) => {
+    try {
+      const db = await openDatabase();
+      const normalizedData = normalizeIds(movementData);
+      const movementId = normalizedData.id || nanoid();
+      const now = new Date().toISOString();
+
+      // Validate required fields
+      if (!normalizedData.inventory_id) throw new Error("inventory_id is required");
+      if (!normalizedData.shop_id) throw new Error("shop_id is required");
+      if (!normalizedData.movement_type) throw new Error("movement_type is required");
+      if (normalizedData.quantity === undefined) throw new Error("quantity is required");
+
+      await db.runAsync(
+        `INSERT INTO stock_movements (
+          id, server_id, inventory_id, shop_id, product_id, variant_id,
+          movement_type, quantity, reference, reason, performed_by,
+          created_at, synced_at, sync_status, is_dirty
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          movementId,
+          normalizedData.server_id || null,
+          ensureStringId(normalizedData.inventory_id),
+          ensureStringId(normalizedData.shop_id),
+          normalizedData.product_id ? ensureStringId(normalizedData.product_id) : null,
+          normalizedData.variant_id ? ensureStringId(normalizedData.variant_id) : null,
+          normalizedData.movement_type,
+          normalizedData.quantity,
+          normalizedData.reference || null,
+          normalizedData.reason || null,
+          normalizedData.performed_by ? ensureStringId(normalizedData.performed_by) : null,
+          normalizedData.created_at || now,
+          now,
+          "pending",
+          1,
+        ]
+      );
+
+      return { success: true, id: movementId };
+    } catch (error) {
+      console.error("Error creating stock movement:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Get movements for an inventory record
+  getMovementsByInventory: async (inventoryId, limit = 100) => {
+    try {
+      const db = await openDatabase();
+      return await db.getAllAsync(
+        `SELECT sm.*, u.username as performed_by_username
+         FROM stock_movements sm
+         LEFT JOIN users u ON sm.performed_by = u.id
+         WHERE sm.inventory_id = ?
+         ORDER BY sm.created_at DESC
+         LIMIT ?`,
+        [ensureStringId(inventoryId), limit]
+      );
+    } catch (error) {
+      console.error("Error getting stock movements by inventory:", error);
+      return [];
+    }
+  },
+
+  // Get movements for a shop
+  getMovementsByShop: async (shopId, limit = 100) => {
+    try {
+      const db = await openDatabase();
+      return await db.getAllAsync(
+        `SELECT sm.*, u.username as performed_by_username,
+                COALESCE(p.name, v.name) as item_name
+         FROM stock_movements sm
+         LEFT JOIN users u ON sm.performed_by = u.id
+         LEFT JOIN products p ON sm.product_id = p.id
+         LEFT JOIN product_variants v ON sm.variant_id = v.id
+         WHERE sm.shop_id = ?
+         ORDER BY sm.created_at DESC
+         LIMIT ?`,
+        [ensureStringId(shopId), limit]
+      );
+    } catch (error) {
+      console.error("Error getting stock movements by shop:", error);
+      return [];
+    }
+  },
+
+  // Get pending sync movements
+  getPendingSyncMovements: async () => {
+    try {
+      const db = await openDatabase();
+      return await db.getAllAsync(
+        'SELECT * FROM stock_movements WHERE is_dirty = 1 OR sync_status = "pending"'
+      );
+    } catch (error) {
+      console.error("Error getting pending sync movements:", error);
+      return [];
+    }
+  },
+
+  // Mark movement as synced
+  markAsSynced: async (localId, serverId) => {
+    return BaseService.markAsSynced('stock_movements', localId, serverId);
+  },
+};
+
+// UPDATED: Inventory Service (with stock movement integration)
 export const InventoryService = {
-  // Create or update inventory
+  // Update inventory (or create if not exists) - now updates last_movement
   updateInventory: async (inventoryData, userId) => {
     try {
       const db = await openDatabase();
@@ -4802,16 +5020,20 @@ export const InventoryService = {
             minimum_stock = ?,
             maximum_stock = ?,
             last_restocked = ?,
+            last_movement = ?,
+            is_locked = ?,
             updated_at = ?,
             sync_status = 'pending',
             is_dirty = 1
           WHERE id = ?`,
           [
-            normalizedData.current_stock || 0,
-            normalizedData.reserved_stock || 0,
-            normalizedData.minimum_stock || 0,
-            normalizedData.maximum_stock || null,
+            normalizedData.current_stock !== undefined ? normalizedData.current_stock : null,
+            normalizedData.reserved_stock !== undefined ? normalizedData.reserved_stock : null,
+            normalizedData.minimum_stock !== undefined ? normalizedData.minimum_stock : null,
+            normalizedData.maximum_stock !== undefined ? normalizedData.maximum_stock : null,
             normalizedData.last_restocked || now,
+            normalizedData.last_movement || now,
+            normalizedData.is_locked !== undefined ? (normalizedData.is_locked ? 1 : 0) : 0,
             now,
             existing.id,
           ]
@@ -4819,25 +5041,27 @@ export const InventoryService = {
         return { success: true, id: existing.id, action: "updated" };
       } else {
         // Create new inventory
-        const inventoryId = uuidv4();
+        const inventoryId = uuid.v4();
 
         await db.runAsync(
           `INSERT INTO inventory (
             id, server_id, product_id, variant_id, shop_id, current_stock, reserved_stock,
-            minimum_stock, maximum_stock, last_restocked, is_active, created_at,
-            updated_at, sync_status, is_dirty
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            minimum_stock, maximum_stock, last_restocked, last_movement, is_locked, is_active,
+            created_at, updated_at, sync_status, is_dirty
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             inventoryId,
             normalizedData.server_id || null,
             normalizedData.product_id ? ensureStringId(normalizedData.product_id) : null,
             normalizedData.variant_id ? ensureStringId(normalizedData.variant_id) : null,
             ensureStringId(normalizedData.shop_id),
-            normalizedData.current_stock || 0,
-            normalizedData.reserved_stock || 0,
-            normalizedData.minimum_stock || 0,
-            normalizedData.maximum_stock || null,
+            normalizedData.current_stock !== undefined ? normalizedData.current_stock : 0,
+            normalizedData.reserved_stock !== undefined ? normalizedData.reserved_stock : 0,
+            normalizedData.minimum_stock !== undefined ? normalizedData.minimum_stock : 0,
+            normalizedData.maximum_stock !== undefined ? normalizedData.maximum_stock : null,
             normalizedData.last_restocked || now,
+            normalizedData.last_movement || now,
+            normalizedData.is_locked !== undefined ? (normalizedData.is_locked ? 1 : 0) : 0,
             1,
             now,
             now,
@@ -4853,7 +5077,288 @@ export const InventoryService = {
     }
   },
 
-  // Get inventory by shop (user-specific)
+  // Stock in (restock)
+  stockIn: async (inventoryId, quantity, userId, reason = null, reference = null) => {
+    const db = await openDatabase();
+    const now = new Date().toISOString();
+
+    if (quantity <= 0) {
+      throw new Error("Quantity must be positive");
+    }
+
+    // Get inventory record with lock
+    const inventory = await db.getFirstAsync(
+      "SELECT * FROM inventory WHERE id = ? FOR UPDATE",
+      [ensureStringId(inventoryId)]
+    );
+    if (!inventory) throw new Error("Inventory not found");
+    if (inventory.is_locked) throw new Error("Inventory is locked");
+
+    const newStock = inventory.current_stock + quantity;
+
+    // Update inventory
+    await db.runAsync(
+      `UPDATE inventory SET
+        current_stock = ?,
+        last_restocked = ?,
+        last_movement = ?,
+        updated_at = ?,
+        sync_status = 'pending',
+        is_dirty = 1
+      WHERE id = ?`,
+      [newStock, now, now, now, inventoryId]
+    );
+
+    // Create movement record
+    const movementResult = await StockMovementService.createMovement({
+      inventory_id: inventoryId,
+      shop_id: inventory.shop_id,
+      product_id: inventory.product_id,
+      variant_id: inventory.variant_id,
+      movement_type: 'in',
+      quantity: quantity,
+      reason: reason,
+      reference: reference,
+      performed_by: userId,
+    });
+
+    if (!movementResult.success) {
+      throw new Error(movementResult.error);
+    }
+
+    return { success: true, newStock };
+  },
+
+  // Stock out (loss/damage)
+  stockOut: async (inventoryId, quantity, userId, reason = null) => {
+    const db = await openDatabase();
+    const now = new Date().toISOString();
+
+    if (quantity <= 0) {
+      throw new Error("Quantity must be positive");
+    }
+
+    // Get inventory with lock
+    const inventory = await db.getFirstAsync(
+      "SELECT * FROM inventory WHERE id = ? FOR UPDATE",
+      [ensureStringId(inventoryId)]
+    );
+    if (!inventory) throw new Error("Inventory not found");
+    if (inventory.is_locked) throw new Error("Inventory is locked");
+
+    const available = inventory.current_stock - inventory.reserved_stock;
+    if (available < quantity) {
+      throw new Error(`Insufficient stock. Available: ${available}`);
+    }
+
+    const newStock = inventory.current_stock - quantity;
+
+    // Update inventory
+    await db.runAsync(
+      `UPDATE inventory SET
+        current_stock = ?,
+        last_movement = ?,
+        updated_at = ?,
+        sync_status = 'pending',
+        is_dirty = 1
+      WHERE id = ?`,
+      [newStock, now, now, inventoryId]
+    );
+
+    // Create movement record
+    const movementResult = await StockMovementService.createMovement({
+      inventory_id: inventoryId,
+      shop_id: inventory.shop_id,
+      product_id: inventory.product_id,
+      variant_id: inventory.variant_id,
+      movement_type: 'out',
+      quantity: -quantity,
+      reason: reason,
+      performed_by: userId,
+    });
+
+    if (!movementResult.success) {
+      throw new Error(movementResult.error);
+    }
+
+    return { success: true, newStock };
+  },
+
+  // Adjust stock (set to new quantity)
+  adjustStock: async (inventoryId, newQuantity, userId, reason = null) => {
+    const db = await openDatabase();
+    const now = new Date().toISOString();
+
+    // Get inventory with lock
+    const inventory = await db.getFirstAsync(
+      "SELECT * FROM inventory WHERE id = ? FOR UPDATE",
+      [ensureStringId(inventoryId)]
+    );
+    if (!inventory) throw new Error("Inventory not found");
+    if (inventory.is_locked) throw new Error("Inventory is locked");
+
+    const difference = newQuantity - inventory.current_stock;
+
+    // Update inventory
+    await db.runAsync(
+      `UPDATE inventory SET
+        current_stock = ?,
+        last_movement = ?,
+        updated_at = ?,
+        sync_status = 'pending',
+        is_dirty = 1
+      WHERE id = ?`,
+      [newQuantity, now, now, inventoryId]
+    );
+
+    // Create movement record
+    const movementResult = await StockMovementService.createMovement({
+      inventory_id: inventoryId,
+      shop_id: inventory.shop_id,
+      product_id: inventory.product_id,
+      variant_id: inventory.variant_id,
+      movement_type: 'adjustment',
+      quantity: difference,
+      reason: reason,
+      performed_by: userId,
+    });
+
+    if (!movementResult.success) {
+      throw new Error(movementResult.error);
+    }
+
+    return { success: true, newStock: newQuantity, difference };
+  },
+
+  // Deduct for sale (called during sale creation)
+  deductForSale: async (inventoryId, quantity, saleId, userId) => {
+    const db = await openDatabase();
+    const now = new Date().toISOString();
+
+    if (quantity <= 0) {
+      throw new Error("Quantity must be positive");
+    }
+
+    // Get inventory with lock
+    const inventory = await db.getFirstAsync(
+      "SELECT * FROM inventory WHERE id = ? FOR UPDATE",
+      [ensureStringId(inventoryId)]
+    );
+    if (!inventory) throw new Error("Inventory not found");
+    if (inventory.is_locked) throw new Error("Inventory is locked");
+
+    const available = inventory.current_stock - inventory.reserved_stock;
+    if (available < quantity) {
+      throw new Error(`Insufficient stock. Available: ${available}`);
+    }
+
+    const newStock = inventory.current_stock - quantity;
+
+    // Update inventory
+    await db.runAsync(
+      `UPDATE inventory SET
+        current_stock = ?,
+        last_movement = ?,
+        updated_at = ?,
+        sync_status = 'pending',
+        is_dirty = 1
+      WHERE id = ?`,
+      [newStock, now, now, inventoryId]
+    );
+
+    // Create movement record
+    const movementResult = await StockMovementService.createMovement({
+      inventory_id: inventoryId,
+      shop_id: inventory.shop_id,
+      product_id: inventory.product_id,
+      variant_id: inventory.variant_id,
+      movement_type: 'sale',
+      quantity: -quantity,
+      reference: saleId,
+      performed_by: userId,
+    });
+
+    if (!movementResult.success) {
+      throw new Error(movementResult.error);
+    }
+
+    return { success: true, newStock };
+  },
+
+  // Return stock (customer return)
+  returnStock: async (inventoryId, quantity, saleId, userId, reason = null) => {
+    const db = await openDatabase();
+    const now = new Date().toISOString();
+
+    if (quantity <= 0) {
+      throw new Error("Quantity must be positive");
+    }
+
+    // Get inventory with lock
+    const inventory = await db.getFirstAsync(
+      "SELECT * FROM inventory WHERE id = ? FOR UPDATE",
+      [ensureStringId(inventoryId)]
+    );
+    if (!inventory) throw new Error("Inventory not found");
+    if (inventory.is_locked) throw new Error("Inventory is locked");
+
+    const newStock = inventory.current_stock + quantity;
+
+    // Update inventory
+    await db.runAsync(
+      `UPDATE inventory SET
+        current_stock = ?,
+        last_movement = ?,
+        updated_at = ?,
+        sync_status = 'pending',
+        is_dirty = 1
+      WHERE id = ?`,
+      [newStock, now, now, inventoryId]
+    );
+
+    // Create movement record
+    const movementResult = await StockMovementService.createMovement({
+      inventory_id: inventoryId,
+      shop_id: inventory.shop_id,
+      product_id: inventory.product_id,
+      variant_id: inventory.variant_id,
+      movement_type: 'return',
+      quantity: quantity,
+      reference: saleId,
+      reason: reason,
+      performed_by: userId,
+    });
+
+    if (!movementResult.success) {
+      throw new Error(movementResult.error);
+    }
+
+    return { success: true, newStock };
+  },
+
+  // Lock inventory (prevent updates)
+  lockInventory: async (inventoryId) => {
+    const db = await openDatabase();
+    const now = new Date().toISOString();
+    await db.runAsync(
+      `UPDATE inventory SET is_locked = 1, updated_at = ? WHERE id = ?`,
+      [now, ensureStringId(inventoryId)]
+    );
+    return { success: true };
+  },
+
+  // Unlock inventory
+  unlockInventory: async (inventoryId) => {
+    const db = await openDatabase();
+    const now = new Date().toISOString();
+    await db.runAsync(
+      `UPDATE inventory SET is_locked = 0, updated_at = ? WHERE id = ?`,
+      [now, ensureStringId(inventoryId)]
+    );
+    return { success: true };
+  },
+
+  // Get inventory by shop (unchanged from original, but we'll keep)
   getInventoryByShop: async (shopId, userId) => {
     try {
       const db = await openDatabase();
@@ -4942,7 +5447,7 @@ export const PriceHistoryService = {
     try {
       const db = await openDatabase();
       const normalizedData = normalizeIds(historyData);
-      const historyId = normalizedData.id || uuidv4();
+      const historyId = normalizedData.id || uuid.v4();
       const now = new Date().toISOString();
 
       // Validate: must have either product_id or variant_id
@@ -5790,7 +6295,7 @@ export default {
   cleanupDuplicateEmployees,
   cleanupDuplicateEmployeesInTransaction,
   fixRoleUUIDs,
-  // NEW: Product-related services
+  // Product-related services
   TaxService,
   CategoryService,
   ProductService,
@@ -5798,6 +6303,7 @@ export default {
   ProductAttributeValueService,
   ProductVariantService,
   InventoryService,
+  StockMovementService,
   PriceHistoryService,
   // Sales services
   CustomerService,

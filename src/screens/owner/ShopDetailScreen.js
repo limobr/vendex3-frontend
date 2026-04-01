@@ -11,12 +11,15 @@ import {
   RefreshControl,
   TouchableOpacity,
   FlatList,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../context/AuthContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { useShop } from '../../context/ShopContext';
 import CustomHeaderWithButton from '../../components/CustomHeaderWithButton';
 import EmptyState from '../../components/EmptyState';
+import { ProductService, openDatabase } from '../../database';
 
 // Shop types exactly matching Django model
 const SHOP_TYPES = [
@@ -31,6 +34,7 @@ const SHOP_TYPES = [
 
 export default function ShopDetailScreen({ route, navigation }) {
   const { shopId } = route.params || {};
+  const { user } = useAuth();
   const { database } = useBusiness();
   const { getShopById } = useShop();
   
@@ -51,6 +55,85 @@ export default function ShopDetailScreen({ route, navigation }) {
     return unsubscribe;
   }, [navigation, shopId]);
 
+  // Load real products for the selected shop
+  const loadProductsForShop = async (shopId, businessId) => {
+    try {
+      const db = await openDatabase();
+
+      // 1. Get all inventory for this shop
+      const inventoryList = await db.getAllAsync(
+        `SELECT * FROM inventory WHERE shop_id = ? AND is_active = 1`,
+        [shopId]
+      );
+
+      if (inventoryList.length === 0) {
+        console.log('No inventory found for shop', shopId);
+        return [];
+      }
+
+      // 2. Separate simple and variant inventory
+      const simpleInventory = inventoryList.filter(item => item.product_id);
+      const variantInventory = inventoryList.filter(item => item.variant_id);
+
+      // 3. Get variant details (product_id for each variant)
+      let variantDetails = [];
+      if (variantInventory.length) {
+        const variantIds = variantInventory.map(item => item.variant_id);
+        variantDetails = await db.getAllAsync(
+          `SELECT id, product_id FROM product_variants WHERE id IN (${variantIds.map(() => '?').join(',')})`,
+          variantIds
+        );
+      }
+
+      // 4. Build product stock map (product_id -> total stock in this shop)
+      const productStockMap = new Map();
+
+      simpleInventory.forEach(inv => {
+        const productId = inv.product_id;
+        const currentStock = inv.current_stock || 0;
+        productStockMap.set(productId, (productStockMap.get(productId) || 0) + currentStock);
+      });
+
+      variantInventory.forEach(inv => {
+        const variant = variantDetails.find(v => v.id === inv.variant_id);
+        if (variant) {
+          const productId = variant.product_id;
+          const currentStock = inv.current_stock || 0;
+          productStockMap.set(productId, (productStockMap.get(productId) || 0) + currentStock);
+        }
+      });
+
+      // 5. Get product IDs that have stock in this shop
+      const productIdsWithStock = Array.from(productStockMap.keys());
+      if (productIdsWithStock.length === 0) return [];
+
+      // 6. Fetch all products for the business
+      const allProducts = await ProductService.getProductsByBusiness(
+        businessId,
+        user.id,
+        { includeInactive: false }
+      );
+
+      // 7. Filter to only those with stock in this shop
+      const filteredProducts = allProducts.filter(p => productIdsWithStock.includes(p.id));
+
+      // 8. Attach stock information
+      const productsWithStock = filteredProducts.map(product => ({
+        ...product,
+        inventory: {
+          current_stock: productStockMap.get(product.id) || 0,
+          reserved_stock: 0,
+          minimum_stock: product.reorder_level || 0,
+        },
+      }));
+
+      return productsWithStock;
+    } catch (error) {
+      console.error('Error loading products for shop:', error);
+      return [];
+    }
+  };
+
   const loadShopData = async () => {
     try {
       setLoading(true);
@@ -69,8 +152,9 @@ export default function ShopDetailScreen({ route, navigation }) {
       const employeesData = await database.EmployeeService.getEmployeesByShop(shopId);
       setEmployees(employeesData);
       
-      // Load hardcoded products for this shop
-      loadHardcodedProducts();
+      // Load real products for this shop
+      const productsData = await loadProductsForShop(shopId, shopData.business_id);
+      setProducts(productsData);
       
     } catch (error) {
       console.error('Error loading shop data:', error);
@@ -78,119 +162,6 @@ export default function ShopDetailScreen({ route, navigation }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadHardcodedProducts = () => {
-    // Hardcoded products for now (5 products as requested)
-    const hardcodedProducts = [
-      {
-        id: 'prod_001',
-        name: 'Premium Coffee',
-        description: 'Arabica coffee beans, 500g',
-        category: 'beverages',
-        product_type: 'physical',
-        barcode: '789123456001',
-        sku: 'COFFEE-500G',
-        cost_price: 350,
-        selling_price: 650,
-        wholesale_price: 550,
-        is_taxable: true,
-        tax_rate: 16,
-        unit_of_measure: 'pcs',
-        reorder_level: 10,
-        is_trackable: true,
-        current_stock: 25,
-        minimum_stock: 5,
-        is_active: true,
-        created_at: '2024-01-15T10:30:00Z',
-      },
-      {
-        id: 'prod_002',
-        name: 'Organic Sugar',
-        description: 'Natural cane sugar, 1kg',
-        category: 'groceries',
-        product_type: 'physical',
-        barcode: '789123456002',
-        sku: 'SUGAR-1KG',
-        cost_price: 120,
-        selling_price: 250,
-        wholesale_price: 200,
-        is_taxable: true,
-        tax_rate: 16,
-        unit_of_measure: 'pcs',
-        reorder_level: 20,
-        is_trackable: true,
-        current_stock: 48,
-        minimum_stock: 10,
-        is_active: true,
-        created_at: '2024-01-16T14:20:00Z',
-      },
-      {
-        id: 'prod_003',
-        name: 'Milk Powder',
-        description: 'Full cream milk powder, 400g',
-        category: 'dairy',
-        product_type: 'physical',
-        barcode: '789123456003',
-        sku: 'MILK-400G',
-        cost_price: 180,
-        selling_price: 320,
-        wholesale_price: 280,
-        is_taxable: true,
-        tax_rate: 16,
-        unit_of_measure: 'pcs',
-        reorder_level: 15,
-        is_trackable: true,
-        current_stock: 32,
-        minimum_stock: 8,
-        is_active: true,
-        created_at: '2024-01-17T09:15:00Z',
-      },
-      {
-        id: 'prod_004',
-        name: 'Tea Leaves',
-        description: 'Premium tea leaves, 250g',
-        category: 'beverages',
-        product_type: 'physical',
-        barcode: '789123456004',
-        sku: 'TEA-250G',
-        cost_price: 220,
-        selling_price: 420,
-        wholesale_price: 350,
-        is_taxable: true,
-        tax_rate: 16,
-        unit_of_measure: 'pcs',
-        reorder_level: 12,
-        is_trackable: true,
-        current_stock: 18,
-        minimum_stock: 6,
-        is_active: true,
-        created_at: '2024-01-18T11:45:00Z',
-      },
-      {
-        id: 'prod_005',
-        name: 'Cooking Oil',
-        description: 'Vegetable cooking oil, 1L',
-        category: 'cooking',
-        product_type: 'physical',
-        barcode: '789123456005',
-        sku: 'OIL-1L',
-        cost_price: 280,
-        selling_price: 480,
-        wholesale_price: 400,
-        is_taxable: true,
-        tax_rate: 16,
-        unit_of_measure: 'pcs',
-        reorder_level: 8,
-        is_trackable: true,
-        current_stock: 0,
-        minimum_stock: 4,
-        is_active: false,
-        created_at: '2024-01-19T16:30:00Z',
-      },
-    ];
-    
-    setProducts(hardcodedProducts);
   };
 
   const onRefresh = async () => {
@@ -331,8 +302,10 @@ export default function ShopDetailScreen({ route, navigation }) {
   };
 
   const renderProductItem = ({ item }) => {
-    const isLowStock = item.current_stock <= item.reorder_level;
-    const profitMargin = ((item.selling_price - item.cost_price) / item.cost_price * 100).toFixed(1);
+    const hasStock = item.inventory?.current_stock > 0;
+    const stockCount = item.inventory?.current_stock || 0;
+    const isLowStock = stockCount <= (item.reorder_level || 0);
+    const profitMargin = ((item.base_selling_price - item.base_cost_price) / (item.base_cost_price || 1) * 100).toFixed(1);
 
     return (
       <TouchableOpacity 
@@ -340,84 +313,73 @@ export default function ShopDetailScreen({ route, navigation }) {
         onPress={() => handleViewProduct(item)}
         activeOpacity={0.7}
       >
-        <View style={styles.productHeader}>
-          <View style={styles.productIconContainer}>
-            <View style={[styles.productIcon, { backgroundColor: '#FF6B0020' }]}>
-              <Ionicons name="cube" size={24} color="#FF6B00" />
+        <View style={styles.productImageContainer}>
+          {item.image ? (
+            <Image source={{ uri: item.image }} style={styles.productImage} />
+          ) : (
+            <View style={[styles.productImage, styles.placeholderImage]}>
+              <Ionicons name="cube-outline" size={40} color="#9CA3AF" />
             </View>
-          </View>
-          <View style={styles.productInfo}>
-            <View style={styles.productTitleRow}>
-              <Text style={styles.productName}>{item.name}</Text>
-              <View style={[
-                styles.productStatusBadge,
-                { backgroundColor: item.is_active ? '#DCFCE7' : '#FEE2E2' }
-              ]}>
-                <Text style={[
-                  styles.productStatusText,
-                  { color: item.is_active ? '#166534' : '#991B1B' }
-                ]}>
-                  {item.is_active ? 'Active' : 'Inactive'}
-                </Text>
-              </View>
+          )}
+          {!hasStock && (
+            <View style={styles.outOfStockBadge}>
+              <Text style={styles.outOfStockText}>Out of Stock</Text>
             </View>
-            <Text style={styles.productDescription} numberOfLines={2}>
-              {item.description}
-            </Text>
-            <Text style={styles.productCategory}>
-              <Ionicons name="pricetag" size={12} color="#6B7280" /> {item.category}
-            </Text>
-          </View>
+          )}
         </View>
-        
-        <View style={styles.productDetails}>
-          <View style={styles.detailRow}>
-            <View style={styles.detailColumn}>
-              <Text style={styles.detailLabel}>Stock</Text>
-              <Text style={[
-                styles.detailValue,
-                isLowStock && styles.lowStockText
-              ]}>
-                {item.current_stock} {item.unit_of_measure}
-                {isLowStock && ' ⚠️'}
-              </Text>
+
+        <View style={styles.productInfo}>
+          <Text style={styles.productName} numberOfLines={2}>
+            {item.name}
+          </Text>
+
+          {item.category_name && (
+            <View style={styles.categoryBadge}>
+              <Text style={styles.categoryBadgeText}>{item.category_name}</Text>
             </View>
-            <View style={styles.detailColumn}>
-              <Text style={styles.detailLabel}>Buying Price</Text>
-              <Text style={styles.detailValue}>KES {item.cost_price}</Text>
-            </View>
-            <View style={styles.detailColumn}>
-              <Text style={styles.detailLabel}>Selling Price</Text>
-              <Text style={[styles.detailValue, styles.sellingPrice]}>
-                KES {item.selling_price}
-              </Text>
-            </View>
-          </View>
-          
-          <View style={styles.productFooter}>
-            <View style={styles.productMetrics}>
-              <View style={styles.metricItem}>
-                <Text style={styles.metricLabel}>SKU</Text>
-                <Text style={styles.metricValue}>{item.sku}</Text>
+          )}
+
+          <View style={styles.productMeta}>
+            <Text style={styles.productSKU}>SKU: {item.base_sku || "N/A"}</Text>
+            {item.has_variants === 1 && (
+              <View style={styles.variantBadge}>
+                <Ionicons name="options-outline" size={12} color="#FF6B00" />
+                <Text style={styles.variantBadgeText}>Variants</Text>
               </View>
-              <View style={styles.metricItem}>
-                <Text style={styles.metricLabel}>Margin</Text>
-                <Text style={[styles.metricValue, { color: profitMargin >= 0 ? '#16A34A' : '#DC2626' }]}>
-                  {profitMargin}%
+            )}
+          </View>
+
+          <View style={styles.priceRow}>
+            <View style={styles.priceContainer}>
+              <Text style={styles.priceLabel}>Price:</Text>
+              <Text style={styles.price}>
+                KES {item.base_selling_price?.toLocaleString() || "0"}
+              </Text>
+            </View>
+            {item.base_cost_price && (
+              <View style={styles.costContainer}>
+                <Text style={styles.costLabel}>Cost:</Text>
+                <Text style={styles.cost}>
+                  KES {item.base_cost_price?.toLocaleString()}
                 </Text>
               </View>
-              <View style={styles.metricItem}>
-                <Text style={styles.metricLabel}>Tax</Text>
-                <Text style={styles.metricValue}>{item.tax_rate}%</Text>
-              </View>
-            </View>
-            
-            <TouchableOpacity 
-              style={styles.productAction}
-              onPress={() => handleViewProduct(item)}
+            )}
+          </View>
+
+          <View style={styles.stockRow}>
+            <Ionicons
+              name={hasStock ? "checkmark-circle" : "close-circle"}
+              size={16}
+              color={hasStock ? "#10B981" : "#EF4444"}
+            />
+            <Text
+              style={[
+                styles.stockText,
+                { color: hasStock ? "#10B981" : "#EF4444" },
+              ]}
             >
-              <Ionicons name="ellipsis-vertical" size={20} color="#9ca3af" />
-            </TouchableOpacity>
+              {hasStock ? `${stockCount} in stock` : "Out of stock"}
+            </Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -428,6 +390,10 @@ export default function ShopDetailScreen({ route, navigation }) {
     if (!shop) return null;
 
     const shopType = getShopType();
+    const totalProducts = products.length;
+    const activeProducts = products.filter(p => p.is_active).length;
+    const lowStockProducts = products.filter(p => p.inventory.current_stock <= p.reorder_level && p.is_active).length;
+    const totalStock = products.reduce((sum, p) => sum + (p.inventory.current_stock || 0), 0);
 
     return (
       <>
@@ -475,10 +441,10 @@ export default function ShopDetailScreen({ route, navigation }) {
               <Ionicons name="cube" size={24} color="#FF6B00" />
             </View>
             <Text style={styles.statLabel}>Products</Text>
-            <Text style={styles.statValue}>{products.length}</Text>
+            <Text style={styles.statValue}>{totalProducts}</Text>
             <TouchableOpacity onPress={() => setActiveTab('products')}>
               <Text style={styles.statTrend}>
-                {products.filter(p => p.is_active).length} active
+                {activeProducts} active
               </Text>
             </TouchableOpacity>
           </View>
@@ -618,15 +584,15 @@ export default function ShopDetailScreen({ route, navigation }) {
                     <Text style={styles.miniProductName} numberOfLines={1}>
                       {product.name}
                     </Text>
-                    <Text style={styles.miniProductSku}>{product.sku}</Text>
+                    <Text style={styles.miniProductSku}>{product.base_sku || "N/A"}</Text>
                   </View>
                 </View>
                 <View style={styles.miniProductStatus}>
                   <Text style={[
                     styles.miniProductStock,
-                    product.current_stock <= product.reorder_level && styles.lowStockText
+                    (product.inventory.current_stock <= (product.reorder_level || 0)) && styles.lowStockText
                   ]}>
-                    {product.current_stock} in stock
+                    {product.inventory.current_stock} in stock
                   </Text>
                   <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
                 </View>
@@ -740,59 +706,62 @@ export default function ShopDetailScreen({ route, navigation }) {
     </View>
   );
 
-  const renderProductsList = () => (
-    <View style={styles.section}>
-      <View style={styles.tabHeader}>
-        <Text style={styles.tabTitle}>Products ({products.length})</Text>
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={handleAddProduct}
-        >
-          <Ionicons name="add" size={20} color="#FF6B00" />
-          <Text style={styles.addButtonText}>Add Product</Text>
-        </TouchableOpacity>
-      </View>
-      
-      {products.length > 0 ? (
-        <>
-          <View style={styles.productsStats}>
-            <View style={styles.productStat}>
-              <Text style={styles.productStatValue}>{products.filter(p => p.is_active).length}</Text>
-              <Text style={styles.productStatLabel}>Active</Text>
+  const renderProductsList = () => {
+    const totalProducts = products.length;
+    const activeProducts = products.filter(p => p.is_active).length;
+    const lowStockProducts = products.filter(p => p.inventory.current_stock <= p.reorder_level && p.is_active).length;
+    const totalStock = products.reduce((sum, p) => sum + (p.inventory.current_stock || 0), 0);
+
+    return (
+      <View style={styles.section}>
+        <View style={styles.tabHeader}>
+          <Text style={styles.tabTitle}>Products ({totalProducts})</Text>
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={handleAddProduct}
+          >
+            <Ionicons name="add" size={20} color="#FF6B00" />
+            <Text style={styles.addButtonText}>Add Product</Text>
+          </TouchableOpacity>
+        </View>
+        
+        {totalProducts > 0 ? (
+          <>
+            <View style={styles.productsStats}>
+              <View style={styles.productStat}>
+                <Text style={styles.productStatValue}>{activeProducts}</Text>
+                <Text style={styles.productStatLabel}>Active</Text>
+              </View>
+              <View style={styles.productStat}>
+                <Text style={styles.productStatValue}>{lowStockProducts}</Text>
+                <Text style={styles.productStatLabel}>Low Stock</Text>
+              </View>
+              <View style={styles.productStat}>
+                <Text style={styles.productStatValue}>{totalStock}</Text>
+                <Text style={styles.productStatLabel}>Total Stock</Text>
+              </View>
             </View>
-            <View style={styles.productStat}>
-              <Text style={styles.productStatValue}>
-                {products.filter(p => p.current_stock <= p.reorder_level && p.is_active).length}
-              </Text>
-              <Text style={styles.productStatLabel}>Low Stock</Text>
-            </View>
-            <View style={styles.productStat}>
-              <Text style={styles.productStatValue}>
-                {products.reduce((sum, p) => sum + p.current_stock, 0)}
-              </Text>
-              <Text style={styles.productStatLabel}>Total Stock</Text>
-            </View>
-          </View>
-          
-          <FlatList
-            data={products}
-            renderItem={renderProductItem}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            showsVerticalScrollIndicator={false}
+            
+            <FlatList
+              data={products}
+              renderItem={renderProductItem}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+              showsVerticalScrollIndicator={false}
+            />
+          </>
+        ) : (
+          <EmptyState
+            icon="cube-outline"
+            title="No Products"
+            description="Add products to start selling in this shop"
+            actionText="Add First Product"
+            onAction={handleAddProduct}
           />
-        </>
-      ) : (
-        <EmptyState
-          icon="cube-outline"
-          title="No Products"
-          description="Add products to start selling in this shop"
-          actionText="Add First Product"
-          onAction={handleAddProduct}
-        />
-      )}
-    </View>
-  );
+        )}
+      </View>
+    );
+  };
 
   if (loading && !refreshing) {
     return (
@@ -1095,10 +1064,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 4,
     borderTopColor: '#4CAF50',
   },
-  createdCard: {
-    borderTopWidth: 4,
-    borderTopColor: '#9C27B0',
-  },
   statHeader: {
     marginBottom: 12,
   },
@@ -1243,6 +1208,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#16A34A',
     marginRight: 8,
+  },
+  lowStockText: {
+    color: '#DC2626',
   },
   miniEmployeeCard: {
     flexDirection: 'row',
@@ -1442,123 +1410,140 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   productCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  productHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
     marginBottom: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  productIconContainer: {
+  productImageContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    overflow: 'hidden',
     marginRight: 12,
+    position: 'relative',
   },
-  productIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+  productImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
+  placeholderImage: {
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  outOfStockBadge: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+    paddingVertical: 4,
+    alignItems: 'center',
+  },
+  outOfStockText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#fff',
+  },
   productInfo: {
     flex: 1,
-  },
-  productTitleRow: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
   },
   productName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1F2937',
-    flex: 1,
-  },
-  productStatusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginLeft: 8,
-  },
-  productStatusText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  productDescription: {
-    fontSize: 14,
-    color: '#6B7280',
     marginBottom: 4,
   },
-  productCategory: {
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  categoryBadgeText: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  productMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  productSKU: {
     fontSize: 12,
+    color: '#9CA3AF',
+    marginRight: 8,
+  },
+  variantBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF7F0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  variantBadgeText: {
+    fontSize: 10,
+    color: '#FF6B00',
+    fontWeight: '500',
+    marginLeft: 2,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginRight: 12,
+  },
+  priceLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginRight: 4,
+  },
+  price: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FF6B00',
+  },
+  costContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  costLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginRight: 4,
+  },
+  cost: {
+    fontSize: 12,
+    fontWeight: '500',
     color: '#6B7280',
   },
-  productDetails: {
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-    paddingTop: 12,
-  },
-  detailRow: {
+  stockRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  detailColumn: {
-    flex: 1,
     alignItems: 'center',
   },
-  detailLabel: {
-    fontSize: 11,
-    color: '#9ca3af',
-    marginBottom: 2,
-  },
-  detailValue: {
-    fontSize: 14,
+  stockText: {
+    fontSize: 13,
     fontWeight: '500',
-    color: '#1F2937',
-  },
-  lowStockText: {
-    color: '#DC2626',
-    fontWeight: '600',
-  },
-  sellingPrice: {
-    color: '#FF6B00',
-    fontWeight: '600',
-  },
-  productFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  productMetrics: {
-    flexDirection: 'row',
-    flex: 1,
-  },
-  metricItem: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  metricLabel: {
-    fontSize: 10,
-    color: '#9ca3af',
-    marginBottom: 2,
-  },
-  metricValue: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  productAction: {
-    padding: 4,
+    marginLeft: 4,
   },
   fab: {
     position: 'absolute',

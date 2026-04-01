@@ -147,7 +147,7 @@ export default function ShopProductsScreen({ route, navigation }) {
     const hardcodedProducts = [
       {
         id: 'prod_001',
-        name: 'Premium Coffee',
+        name: 'Premidssum Coffee',
         description: 'Arabica coffee beans, 500g',
         category: 'cat_001',
         product_type: 'physical',

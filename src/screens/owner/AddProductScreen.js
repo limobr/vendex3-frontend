@@ -21,11 +21,11 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import CustomHeaderWithButton from "../../components/CustomHeaderWithButton";
 import { nanoid } from "nanoid/non-secure";
-import { productAPI } from '../../services/api';
+import { productAPI } from "../../services/api";
 import databaseService from "../../database";
 import { useAuth } from "../../context/AuthContext";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 // Product types from Django model
 const PRODUCT_TYPES = [
@@ -96,18 +96,18 @@ const TAX_TYPES = [
 // Helper function to build category tree
 const buildCategoryTree = (categories) => {
   if (!categories || !Array.isArray(categories)) return [];
-  
+
   const categoryMap = {};
-  categories.forEach(category => {
+  categories.forEach((category) => {
     categoryMap[category.id] = {
       ...category,
       children: [],
-      isExpanded: false
+      isExpanded: false,
     };
   });
-  
+
   const tree = [];
-  categories.forEach(category => {
+  categories.forEach((category) => {
     if (category.parent_id) {
       if (categoryMap[category.parent_id]) {
         categoryMap[category.parent_id].children.push(categoryMap[category.id]);
@@ -118,14 +118,14 @@ const buildCategoryTree = (categories) => {
       tree.push(categoryMap[category.id]);
     }
   });
-  
+
   tree.sort((a, b) => a.name.localeCompare(b.name));
-  tree.forEach(category => {
+  tree.forEach((category) => {
     if (category.children.length > 0) {
       category.children.sort((a, b) => a.name.localeCompare(b.name));
     }
   });
-  
+
   return tree;
 };
 
@@ -135,36 +135,42 @@ const expandToSelectedCategory = (categoryId, tree, currentExpanded = {}) => {
     if (node.id === targetId) {
       return [...path, node.id];
     }
-    
+
     if (node.children) {
       for (const child of node.children) {
         const result = findCategoryPath(child, targetId, [...path, node.id]);
         if (result) return result;
       }
     }
-    
+
     return null;
   };
-  
+
   const newExpanded = { ...currentExpanded };
-  
+
   // Find the path to the selected category
   for (const root of tree) {
     const path = findCategoryPath(root, categoryId);
     if (path) {
       // Expand all categories in the path except the last one (the selected category itself)
-      path.forEach(catId => {
+      path.forEach((catId) => {
         newExpanded[catId] = true;
       });
       break;
     }
   }
-  
+
   return newExpanded;
 };
 
 // Attribute Item Component
-const AttributeItem = ({ attribute, index, onUpdate, onRemove, onAddValue }) => {
+const AttributeItem = ({
+  attribute,
+  index,
+  onUpdate,
+  onRemove,
+  onAddValue,
+}) => {
   const [newValue, setNewValue] = useState("");
   const [isAdding, setIsAdding] = useState(false);
 
@@ -181,11 +187,14 @@ const AttributeItem = ({ attribute, index, onUpdate, onRemove, onAddValue }) => 
             autoCapitalize="words"
           />
         </View>
-        <TouchableOpacity onPress={() => onRemove(index)} style={styles.removeButton}>
+        <TouchableOpacity
+          onPress={() => onRemove(index)}
+          style={styles.removeButton}
+        >
           <Ionicons name="trash" size={20} color="#EF4444" />
         </TouchableOpacity>
       </View>
-      
+
       <Text style={styles.attributeLabel}>Values:</Text>
       <View style={styles.valuesContainer}>
         {attribute.values.map((value, valueIndex) => (
@@ -202,7 +211,7 @@ const AttributeItem = ({ attribute, index, onUpdate, onRemove, onAddValue }) => 
             </TouchableOpacity>
           </View>
         ))}
-        
+
         {isAdding ? (
           <View style={styles.valueInputContainer}>
             <TextInput
@@ -241,13 +250,18 @@ const AttributeItem = ({ attribute, index, onUpdate, onRemove, onAddValue }) => 
           </TouchableOpacity>
         )}
       </View>
-      
+
       <TouchableOpacity
         style={styles.presetButton}
         onPress={() => {
-          const preset = PREDEFINED_ATTRIBUTES.find(p => p.name.toLowerCase() === attribute.name.toLowerCase());
+          const preset = PREDEFINED_ATTRIBUTES.find(
+            (p) => p.name.toLowerCase() === attribute.name.toLowerCase(),
+          );
           if (preset) {
-            onUpdate(index, "values", [...attribute.values, ...preset.values.filter(v => !attribute.values.includes(v))]);
+            onUpdate(index, "values", [
+              ...attribute.values,
+              ...preset.values.filter((v) => !attribute.values.includes(v)),
+            ]);
           }
         }}
       >
@@ -258,7 +272,13 @@ const AttributeItem = ({ attribute, index, onUpdate, onRemove, onAddValue }) => 
 };
 
 // Variant Item Component
-const VariantItem = ({ variant, index, onUpdate, onRemove, isBaseProduct = false }) => {
+const VariantItem = ({
+  variant,
+  index,
+  onUpdate,
+  onRemove,
+  isBaseProduct = false,
+}) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Generate variant barcode
@@ -273,23 +293,19 @@ const VariantItem = ({ variant, index, onUpdate, onRemove, isBaseProduct = false
 
   // Scan variant barcode (simulated)
   const scanVariantBarcode = () => {
-    Alert.alert(
-      "Scan Barcode",
-      "Position the barcode in front of the camera",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Simulate Scan",
-          onPress: () => {
-            const dummyBarcode = `978${Math.floor(Math.random() * 10000000000)
-              .toString()
-              .padStart(10, "0")}`;
-            onUpdate(index, "barcode", dummyBarcode);
-            Alert.alert("Barcode Scanned", `Scanned barcode: ${dummyBarcode}`);
-          }
-        }
-      ]
-    );
+    Alert.alert("Scan Barcode", "Position the barcode in front of the camera", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Simulate Scan",
+        onPress: () => {
+          const dummyBarcode = `978${Math.floor(Math.random() * 10000000000)
+            .toString()
+            .padStart(10, "0")}`;
+          onUpdate(index, "barcode", dummyBarcode);
+          Alert.alert("Barcode Scanned", `Scanned barcode: ${dummyBarcode}`);
+        },
+      },
+    ]);
   };
 
   return (
@@ -319,7 +335,7 @@ const VariantItem = ({ variant, index, onUpdate, onRemove, isBaseProduct = false
           </TouchableOpacity>
         )}
       </TouchableOpacity>
-      
+
       {isExpanded && (
         <View style={styles.variantContent}>
           <View style={styles.variantRow}>
@@ -366,13 +382,15 @@ const VariantItem = ({ variant, index, onUpdate, onRemove, isBaseProduct = false
                     onPress={generateVariantBarcode}
                   >
                     <Ionicons name="barcode" size={16} color="#fff" />
-                    <Text style={styles.variantBarcodeButtonText}>Generate</Text>
+                    <Text style={styles.variantBarcodeButtonText}>
+                      Generate
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
             </View>
           </View>
-          
+
           <View style={styles.variantRow}>
             <View style={styles.variantInputGroup}>
               <Text style={styles.variantLabel}>Cost Price</Text>
@@ -394,14 +412,16 @@ const VariantItem = ({ variant, index, onUpdate, onRemove, isBaseProduct = false
                 <TextInput
                   style={styles.priceInput}
                   value={variant.selling_price}
-                  onChangeText={(text) => onUpdate(index, "selling_price", text)}
+                  onChangeText={(text) =>
+                    onUpdate(index, "selling_price", text)
+                  }
                   placeholder="0.00"
                   keyboardType="decimal-pad"
                 />
               </View>
             </View>
           </View>
-          
+
           <View style={styles.variantRow}>
             <View style={styles.variantInputGroup}>
               <Text style={styles.variantLabel}>Wholesale Price</Text>
@@ -410,7 +430,9 @@ const VariantItem = ({ variant, index, onUpdate, onRemove, isBaseProduct = false
                 <TextInput
                   style={styles.priceInput}
                   value={variant.wholesale_price}
-                  onChangeText={(text) => onUpdate(index, "wholesale_price", text)}
+                  onChangeText={(text) =>
+                    onUpdate(index, "wholesale_price", text)
+                  }
                   placeholder="0.00"
                   keyboardType="decimal-pad"
                 />
@@ -422,29 +444,33 @@ const VariantItem = ({ variant, index, onUpdate, onRemove, isBaseProduct = false
                 <TextInput
                   style={styles.variantInput}
                   value={variant.initial_stock}
-                  onChangeText={(text) => onUpdate(index, "initial_stock", text)}
+                  onChangeText={(text) =>
+                    onUpdate(index, "initial_stock", text)
+                  }
                   placeholder="0"
                   keyboardType="numeric"
                 />
               </View>
             )}
           </View>
-          
-          {!isBaseProduct && variant.attribute_values && variant.attribute_values.length > 0 && (
-            <View style={styles.variantAttributes}>
-              <Text style={styles.variantLabel}>Attributes:</Text>
-              <View style={styles.attributeTags}>
-                {variant.attribute_values.map((attr, idx) => (
-                  <View key={idx} style={styles.attributeTag}>
-                    <Text style={styles.attributeTagText}>
-                      {attr.attribute_name}: {attr.value}
-                    </Text>
-                  </View>
-                ))}
+
+          {!isBaseProduct &&
+            variant.attribute_values &&
+            variant.attribute_values.length > 0 && (
+              <View style={styles.variantAttributes}>
+                <Text style={styles.variantLabel}>Attributes:</Text>
+                <View style={styles.attributeTags}>
+                  {variant.attribute_values.map((attr, idx) => (
+                    <View key={idx} style={styles.attributeTag}>
+                      <Text style={styles.attributeTagText}>
+                        {attr.attribute_name}: {attr.value}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
-          )}
-          
+            )}
+
           {!isBaseProduct && (
             <View style={styles.variantToggle}>
               <Text style={styles.toggleLabel}>Set as Default</Text>
@@ -467,18 +493,24 @@ const VariantItem = ({ variant, index, onUpdate, onRemove, isBaseProduct = false
 };
 
 // Enhanced Tax Calculator Component for variants
-const TaxCalculator = ({ sellingPrice, taxRate, taxInclusive, taxName, variantName }) => {
+const TaxCalculator = ({
+  sellingPrice,
+  taxRate,
+  taxInclusive,
+  taxName,
+  variantName,
+}) => {
   const sellingPriceNum = parseFloat(sellingPrice) || 0;
   const taxRateNum = parseFloat(taxRate) || 0;
-  
+
   let taxAmount = 0;
   let finalPrice = 0;
   let priceWithoutTax = 0;
-  
+
   if (taxInclusive) {
     // Price includes tax
     finalPrice = sellingPriceNum;
-    priceWithoutTax = sellingPriceNum / (1 + (taxRateNum / 100));
+    priceWithoutTax = sellingPriceNum / (1 + taxRateNum / 100);
     taxAmount = finalPrice - priceWithoutTax;
   } else {
     // Price excludes tax
@@ -486,7 +518,7 @@ const TaxCalculator = ({ sellingPrice, taxRate, taxInclusive, taxName, variantNa
     taxAmount = sellingPriceNum * (taxRateNum / 100);
     finalPrice = sellingPriceNum + taxAmount;
   }
-  
+
   return (
     <View style={styles.taxCalculatorCard}>
       <View style={styles.taxCalculatorHeader}>
@@ -497,58 +529,75 @@ const TaxCalculator = ({ sellingPrice, taxRate, taxInclusive, taxName, variantNa
           </Text>
         )}
       </View>
-      
+
       <View style={styles.taxCalculationGrid}>
         <View style={styles.taxCalculationRow}>
           <Text style={styles.taxCalculationLabel}>Tax Rate:</Text>
-          <Text style={styles.taxCalculationValue}>{taxRate}% ({taxName})</Text>
+          <Text style={styles.taxCalculationValue}>
+            {taxRate}% ({taxName})
+          </Text>
         </View>
-        
+
         <View style={styles.taxCalculationRow}>
           <Text style={styles.taxCalculationLabel}>
             {taxInclusive ? "Price (Tax Inclusive):" : "Price (Tax Exclusive):"}
           </Text>
-          <Text style={styles.taxCalculationValue}>KES {sellingPriceNum.toFixed(2)}</Text>
+          <Text style={styles.taxCalculationValue}>
+            KES {sellingPriceNum.toFixed(2)}
+          </Text>
         </View>
-        
+
         {taxInclusive ? (
           <>
             <View style={styles.taxCalculationRow}>
               <Text style={styles.taxCalculationLabel}>Price without Tax:</Text>
-              <Text style={styles.taxCalculationValue}>KES {priceWithoutTax.toFixed(2)}</Text>
+              <Text style={styles.taxCalculationValue}>
+                KES {priceWithoutTax.toFixed(2)}
+              </Text>
             </View>
             <View style={styles.taxCalculationRow}>
               <Text style={styles.taxCalculationLabel}>Tax Amount:</Text>
-              <Text style={styles.taxCalculationValue}>KES {taxAmount.toFixed(2)}</Text>
+              <Text style={styles.taxCalculationValue}>
+                KES {taxAmount.toFixed(2)}
+              </Text>
             </View>
             <View style={styles.taxCalculationRow}>
-              <Text style={styles.taxCalculationLabel}>Final Price (same):</Text>
-              <Text style={styles.taxCalculationValue}>KES {finalPrice.toFixed(2)}</Text>
+              <Text style={styles.taxCalculationLabel}>
+                Final Price (same):
+              </Text>
+              <Text style={styles.taxCalculationValue}>
+                KES {finalPrice.toFixed(2)}
+              </Text>
             </View>
           </>
         ) : (
           <>
             <View style={styles.taxCalculationRow}>
               <Text style={styles.taxCalculationLabel}>Tax Amount:</Text>
-              <Text style={styles.taxCalculationValue}>KES {taxAmount.toFixed(2)}</Text>
+              <Text style={styles.taxCalculationValue}>
+                KES {taxAmount.toFixed(2)}
+              </Text>
             </View>
             <View style={styles.taxCalculationRow}>
-              <Text style={styles.taxCalculationLabel}>Final Price (with Tax):</Text>
-              <Text style={[styles.taxCalculationValue, styles.finalPriceHighlight]}>
+              <Text style={styles.taxCalculationLabel}>
+                Final Price (with Tax):
+              </Text>
+              <Text
+                style={[styles.taxCalculationValue, styles.finalPriceHighlight]}
+              >
                 KES {finalPrice.toFixed(2)}
               </Text>
             </View>
           </>
         )}
       </View>
-      
+
       <View style={styles.taxSummary}>
         <Ionicons name="calculator" size={16} color="#3B82F6" />
         <Text style={styles.taxSummaryText}>
-          {taxInclusive 
+          {taxInclusive
             ? `Customer pays KES ${finalPrice.toFixed(2)} (tax included)`
-            : `Customer pays KES ${finalPrice.toFixed(2)} (KES ${sellingPriceNum.toFixed(2)} + KES ${taxAmount.toFixed(2)} tax)`
-          }
+            : `Customer pays KES ${finalPrice.toFixed(2)} (KES ${sellingPriceNum.toFixed(2)} + KES ${taxAmount.toFixed(2)} tax)`}
         </Text>
       </View>
     </View>
@@ -556,29 +605,29 @@ const TaxCalculator = ({ sellingPrice, taxRate, taxInclusive, taxName, variantNa
 };
 
 // New Tax Calculation Table Component
-const TaxCalculationTable = ({ 
-  variants, 
-  baseSellingPrice, 
-  taxRate, 
-  taxInclusive, 
+const TaxCalculationTable = ({
+  variants,
+  baseSellingPrice,
+  taxRate,
+  taxInclusive,
   taxName,
   hasVariants,
-  variantType 
+  variantType,
 }) => {
   const [expandedSections, setExpandedSections] = useState({});
-  
+
   // Calculate tax for a given price
   const calculateTax = (price) => {
     const priceNum = parseFloat(price) || 0;
     const taxRateNum = parseFloat(taxRate) || 0;
-    
+
     if (taxInclusive) {
-      const priceWithoutTax = priceNum / (1 + (taxRateNum / 100));
+      const priceWithoutTax = priceNum / (1 + taxRateNum / 100);
       const taxAmount = priceNum - priceWithoutTax;
       return {
         taxAmount,
         finalPrice: priceNum,
-        priceWithoutTax
+        priceWithoutTax,
       };
     } else {
       const taxAmount = priceNum * (taxRateNum / 100);
@@ -586,21 +635,21 @@ const TaxCalculationTable = ({
       return {
         taxAmount,
         finalPrice,
-        priceWithoutTax: priceNum
+        priceWithoutTax: priceNum,
       };
     }
   };
-  
+
   const toggleSection = (id) => {
-    setExpandedSections(prev => ({
+    setExpandedSections((prev) => ({
       ...prev,
-      [id]: !prev[id]
+      [id]: !prev[id],
     }));
   };
-  
+
   // For wide screens (table layout)
   const isWideScreen = width > 768;
-  
+
   // No tax selected
   if (!taxRate || taxRate === 0) {
     return (
@@ -610,11 +659,11 @@ const TaxCalculationTable = ({
       </View>
     );
   }
-  
+
   // Single product (no variants)
   if (!hasVariants || variantType === "none") {
     const taxData = calculateTax(baseSellingPrice);
-    
+
     if (isWideScreen) {
       return (
         <View style={styles.taxTableContainer}>
@@ -624,11 +673,15 @@ const TaxCalculationTable = ({
             <Text style={styles.taxTableHeaderText}>Tax Amount</Text>
             <Text style={styles.taxTableHeaderText}>Final Price</Text>
           </View>
-          
+
           <View style={styles.taxTableRow}>
             <Text style={styles.taxTableCell}>Base Product</Text>
-            <Text style={styles.taxTableCell}>KES {parseFloat(baseSellingPrice || 0).toFixed(2)}</Text>
-            <Text style={styles.taxTableCell}>KES {taxData.taxAmount.toFixed(2)}</Text>
+            <Text style={styles.taxTableCell}>
+              KES {parseFloat(baseSellingPrice || 0).toFixed(2)}
+            </Text>
+            <Text style={styles.taxTableCell}>
+              KES {taxData.taxAmount.toFixed(2)}
+            </Text>
             <Text style={[styles.taxTableCell, styles.finalPriceCell]}>
               KES {taxData.finalPrice.toFixed(2)}
             </Text>
@@ -636,45 +689,57 @@ const TaxCalculationTable = ({
         </View>
       );
     }
-    
+
     // Mobile card layout
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.taxCard}
-        onPress={() => toggleSection('base')}
+        onPress={() => toggleSection("base")}
         activeOpacity={0.7}
       >
         <View style={styles.taxCardHeader}>
           <View style={styles.taxCardHeaderLeft}>
-            <Ionicons 
-              name={expandedSections.base ? "chevron-up" : "chevron-down"} 
-              size={20} 
-              color="#6B7280" 
+            <Ionicons
+              name={expandedSections.base ? "chevron-up" : "chevron-down"}
+              size={20}
+              color="#6B7280"
             />
             <Text style={styles.taxCardTitle}>Base Product</Text>
           </View>
           <View style={styles.taxCardSummary}>
-            <Text style={styles.taxCardPrice}>KES {taxData.finalPrice.toFixed(2)}</Text>
-            <Text style={styles.taxCardTax}>+ KES {taxData.taxAmount.toFixed(2)} tax</Text>
+            <Text style={styles.taxCardPrice}>
+              KES {taxData.finalPrice.toFixed(2)}
+            </Text>
+            <Text style={styles.taxCardTax}>
+              + KES {taxData.taxAmount.toFixed(2)} tax
+            </Text>
           </View>
         </View>
-        
+
         {expandedSections.base && (
           <View style={styles.taxCardContent}>
             <View style={styles.taxDetailRow}>
               <Text style={styles.taxDetailLabel}>Selling Price:</Text>
-              <Text style={styles.taxDetailValue}>KES {parseFloat(baseSellingPrice || 0).toFixed(2)}</Text>
+              <Text style={styles.taxDetailValue}>
+                KES {parseFloat(baseSellingPrice || 0).toFixed(2)}
+              </Text>
             </View>
             <View style={styles.taxDetailRow}>
               <Text style={styles.taxDetailLabel}>Tax Rate:</Text>
-              <Text style={styles.taxDetailValue}>{taxRate}% ({taxName})</Text>
+              <Text style={styles.taxDetailValue}>
+                {taxRate}% ({taxName})
+              </Text>
             </View>
             <View style={styles.taxDetailRow}>
               <Text style={styles.taxDetailLabel}>Tax Amount:</Text>
-              <Text style={styles.taxDetailValue}>KES {taxData.taxAmount.toFixed(2)}</Text>
+              <Text style={styles.taxDetailValue}>
+                KES {taxData.taxAmount.toFixed(2)}
+              </Text>
             </View>
             <View style={[styles.taxDetailRow, styles.finalPriceRow]}>
-              <Text style={[styles.taxDetailLabel, styles.finalPriceLabel]}>Final Price:</Text>
+              <Text style={[styles.taxDetailLabel, styles.finalPriceLabel]}>
+                Final Price:
+              </Text>
               <Text style={[styles.taxDetailValue, styles.finalPriceValue]}>
                 KES {taxData.finalPrice.toFixed(2)}
               </Text>
@@ -684,10 +749,10 @@ const TaxCalculationTable = ({
       </TouchableOpacity>
     );
   }
-  
+
   // With variants
   const allVariants = variants || [];
-  
+
   if (isWideScreen) {
     return (
       <View style={styles.taxTableContainer}>
@@ -698,16 +763,16 @@ const TaxCalculationTable = ({
           <Text style={styles.taxTableHeaderText}>Final Price</Text>
           <Text style={styles.taxTableHeaderText}>Default</Text>
         </View>
-        
+
         {allVariants.map((variant, index) => {
           const taxData = calculateTax(variant.selling_price);
-          
+
           return (
-            <View 
-              key={index} 
+            <View
+              key={index}
               style={[
                 styles.taxTableRow,
-                variant.is_default && styles.defaultVariantRow
+                variant.is_default && styles.defaultVariantRow,
               ]}
             >
               <Text style={styles.taxTableCell} numberOfLines={2}>
@@ -735,7 +800,7 @@ const TaxCalculationTable = ({
       </View>
     );
   }
-  
+
   // Mobile card layout for variants
   return (
     <View style={styles.taxCardsContainer}>
@@ -743,23 +808,20 @@ const TaxCalculationTable = ({
         const taxData = calculateTax(variant.selling_price);
         const isExpanded = expandedSections[`variant_${index}`];
         const isDefault = variant.is_default;
-        
+
         return (
-          <TouchableOpacity 
+          <TouchableOpacity
             key={index}
-            style={[
-              styles.taxCard,
-              isDefault && styles.defaultTaxCard
-            ]}
+            style={[styles.taxCard, isDefault && styles.defaultTaxCard]}
             onPress={() => toggleSection(`variant_${index}`)}
             activeOpacity={0.7}
           >
             <View style={styles.taxCardHeader}>
               <View style={styles.taxCardHeaderLeft}>
-                <Ionicons 
-                  name={isExpanded ? "chevron-up" : "chevron-down"} 
-                  size={20} 
-                  color="#6B7280" 
+                <Ionicons
+                  name={isExpanded ? "chevron-up" : "chevron-down"}
+                  size={20}
+                  color="#6B7280"
                 />
                 <View>
                   <Text style={styles.taxCardTitle} numberOfLines={1}>
@@ -773,11 +835,15 @@ const TaxCalculationTable = ({
                 </View>
               </View>
               <View style={styles.taxCardSummary}>
-                <Text style={styles.taxCardPrice}>KES {taxData.finalPrice.toFixed(2)}</Text>
-                <Text style={styles.taxCardTax}>+ KES {taxData.taxAmount.toFixed(2)} tax</Text>
+                <Text style={styles.taxCardPrice}>
+                  KES {taxData.finalPrice.toFixed(2)}
+                </Text>
+                <Text style={styles.taxCardTax}>
+                  + KES {taxData.taxAmount.toFixed(2)} tax
+                </Text>
               </View>
             </View>
-            
+
             {isExpanded && (
               <View style={styles.taxCardContent}>
                 <View style={styles.taxDetailRow}>
@@ -788,34 +854,43 @@ const TaxCalculationTable = ({
                 </View>
                 <View style={styles.taxDetailRow}>
                   <Text style={styles.taxDetailLabel}>Tax Rate:</Text>
-                  <Text style={styles.taxDetailValue}>{taxRate}% ({taxName})</Text>
+                  <Text style={styles.taxDetailValue}>
+                    {taxRate}% ({taxName})
+                  </Text>
                 </View>
                 <View style={styles.taxDetailRow}>
                   <Text style={styles.taxDetailLabel}>Tax Amount:</Text>
-                  <Text style={styles.taxDetailValue}>KES {taxData.taxAmount.toFixed(2)}</Text>
+                  <Text style={styles.taxDetailValue}>
+                    KES {taxData.taxAmount.toFixed(2)}
+                  </Text>
                 </View>
                 <View style={[styles.taxDetailRow, styles.finalPriceRow]}>
-                  <Text style={[styles.taxDetailLabel, styles.finalPriceLabel]}>Final Price:</Text>
+                  <Text style={[styles.taxDetailLabel, styles.finalPriceLabel]}>
+                    Final Price:
+                  </Text>
                   <Text style={[styles.taxDetailValue, styles.finalPriceValue]}>
                     KES {taxData.finalPrice.toFixed(2)}
                   </Text>
                 </View>
-                
+
                 {/* Variant attributes if available */}
-                {variant.attribute_values && variant.attribute_values.length > 0 && (
-                  <View style={styles.variantAttributesSection}>
-                    <Text style={styles.variantAttributesLabel}>Attributes:</Text>
-                    <View style={styles.variantAttributesTags}>
-                      {variant.attribute_values.map((attr, idx) => (
-                        <View key={idx} style={styles.variantAttributeTag}>
-                          <Text style={styles.variantAttributeTagText}>
-                            {attr.attribute_name}: {attr.value}
-                          </Text>
-                        </View>
-                      ))}
+                {variant.attribute_values &&
+                  variant.attribute_values.length > 0 && (
+                    <View style={styles.variantAttributesSection}>
+                      <Text style={styles.variantAttributesLabel}>
+                        Attributes:
+                      </Text>
+                      <View style={styles.variantAttributesTags}>
+                        {variant.attribute_values.map((attr, idx) => (
+                          <View key={idx} style={styles.variantAttributeTag}>
+                            <Text style={styles.variantAttributeTagText}>
+                              {attr.attribute_name}: {attr.value}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
                     </View>
-                  </View>
-                )}
+                  )}
               </View>
             )}
           </TouchableOpacity>
@@ -826,86 +901,93 @@ const TaxCalculationTable = ({
 };
 
 // Tax Summary Component
-const TaxSummary = ({ variants, baseSellingPrice, taxRate, taxInclusive, taxName, hasVariants }) => {
+const TaxSummary = ({
+  variants,
+  baseSellingPrice,
+  taxRate,
+  taxInclusive,
+  taxName,
+  hasVariants,
+}) => {
   const calculateTotalTax = () => {
     if (!hasVariants || variants.length === 0) {
       const price = parseFloat(baseSellingPrice) || 0;
       const rate = parseFloat(taxRate) || 0;
-      
+
       if (taxInclusive) {
-        const taxAmount = price - (price / (1 + (rate / 100)));
+        const taxAmount = price - price / (1 + rate / 100);
         return taxAmount;
       } else {
         return price * (rate / 100);
       }
     }
-    
+
     // Sum tax for all variants
     return variants.reduce((total, variant) => {
       const price = parseFloat(variant.selling_price) || 0;
       const rate = parseFloat(taxRate) || 0;
-      
+
       if (taxInclusive) {
-        const taxAmount = price - (price / (1 + (rate / 100)));
+        const taxAmount = price - price / (1 + rate / 100);
         return total + taxAmount;
       } else {
-        return total + (price * (rate / 100));
+        return total + price * (rate / 100);
       }
     }, 0);
   };
-  
+
   const calculateTotalRevenue = () => {
     if (!hasVariants || variants.length === 0) {
       const price = parseFloat(baseSellingPrice) || 0;
       const rate = parseFloat(taxRate) || 0;
-      
+
       if (taxInclusive) {
         return price;
       } else {
-        return price + (price * (rate / 100));
+        return price + price * (rate / 100);
       }
     }
-    
+
     // Sum final prices for all variants
     return variants.reduce((total, variant) => {
       const price = parseFloat(variant.selling_price) || 0;
       const rate = parseFloat(taxRate) || 0;
-      
+
       if (taxInclusive) {
         return total + price;
       } else {
-        return total + (price + (price * (rate / 100)));
+        return total + (price + price * (rate / 100));
       }
     }, 0);
   };
-  
+
   const totalTax = calculateTotalTax();
   const totalRevenue = calculateTotalRevenue();
-  
+
   return (
     <View style={styles.taxSummaryContainer}>
       <Text style={styles.taxSummaryTitle}>📊 Tax Summary</Text>
-      
+
       <View style={styles.taxSummaryGrid}>
         <View style={styles.taxSummaryItem}>
           <Text style={styles.taxSummaryItemLabel}>Tax Rate</Text>
           <Text style={styles.taxSummaryItemValue}>{taxRate}%</Text>
         </View>
-        
+
         <View style={styles.taxSummaryItem}>
           <Text style={styles.taxSummaryItemLabel}>Total Tax</Text>
           <Text style={[styles.taxSummaryItemValue, styles.taxAmountValue]}>
             KES {totalTax.toFixed(2)}
           </Text>
         </View>
-        
+
         <View style={styles.taxSummaryItem}>
           <Text style={styles.taxSummaryItemLabel}>Total Revenue</Text>
           <Text style={[styles.taxSummaryItemValue, styles.revenueValue]}>
             KES {totalRevenue.toFixed(2)}
           </Text>
         </View>
-        
+
         <View style={styles.taxSummaryItem}>
           <Text style={styles.taxSummaryItemLabel}>Items</Text>
           <Text style={styles.taxSummaryItemValue}>
@@ -913,10 +995,10 @@ const TaxSummary = ({ variants, baseSellingPrice, taxRate, taxInclusive, taxName
           </Text>
         </View>
       </View>
-      
+
       <Text style={styles.taxSummaryNote}>
-        {taxInclusive 
-          ? "All prices include tax" 
+        {taxInclusive
+          ? "All prices include tax"
           : "Tax will be added at checkout"}
       </Text>
     </View>
@@ -924,40 +1006,39 @@ const TaxSummary = ({ variants, baseSellingPrice, taxRate, taxInclusive, taxName
 };
 
 // Enhanced Category Tree Item Component with tick only for selection
-const CategoryTreeItem = ({ 
-  category, 
-  depth = 0, 
-  selectedCategoryId, 
-  onSelect, 
+const CategoryTreeItem = ({
+  category,
+  depth = 0,
+  selectedCategoryId,
+  onSelect,
   expandedCategories,
   onToggleExpand,
 }) => {
   const hasChildren = category.children && category.children.length > 0;
   const isExpanded = expandedCategories[category.id] || false;
   const isSelected = selectedCategoryId === category.id;
-  
+
   // IMPORTANT: Use useMemo to prevent unnecessary re-renders
   const shouldHighlight = React.useMemo(() => {
     if (isSelected) return true;
     if (!hasChildren || !selectedCategoryId) return false;
-    
+
     const checkChildren = (cat) => {
       if (cat.id === selectedCategoryId) return true;
       if (cat.children && cat.children.length > 0) {
-        return cat.children.some(child => checkChildren(child));
+        return cat.children.some((child) => checkChildren(child));
       }
       return false;
     };
-    
+
     return checkChildren(category);
   }, [category, selectedCategoryId, hasChildren, isSelected]);
 
   return (
     <View>
-      <View style={[
-        styles.categoryItemContainer,
-        { paddingLeft: 20 + (depth * 20) },
-      ]}>
+      <View
+        style={[styles.categoryItemContainer, { paddingLeft: 20 + depth * 20 }]}
+      >
         {/* Main category area - click to expand */}
         <TouchableOpacity
           style={[
@@ -984,50 +1065,62 @@ const CategoryTreeItem = ({
                 />
               </View>
             )}
-            
+
             {!hasChildren && depth > 0 && (
               <View style={styles.childIndicator}>
-                <Ionicons name="return-down-forward" size={16} color="#9CA3AF" />
+                <Ionicons
+                  name="return-down-forward"
+                  size={16}
+                  color="#9CA3AF"
+                />
               </View>
             )}
 
-            <View style={[
-              styles.categoryIcon,
-              { backgroundColor: `${category.color || "#FF6B35"}20` }
-            ]}>
-              <Ionicons 
-                name={category.icon || (hasChildren ? "folder" : "cube")} 
-                size={20} 
-                color={category.color || "#FF6B35"} 
+            <View
+              style={[
+                styles.categoryIcon,
+                { backgroundColor: `${category.color || "#FF6B35"}20` },
+              ]}
+            >
+              <Ionicons
+                name={category.icon || (hasChildren ? "folder" : "cube")}
+                size={20}
+                color={category.color || "#FF6B35"}
               />
             </View>
 
             <View style={styles.categoryInfo}>
-              <Text style={[
-                styles.categoryName,
-                shouldHighlight && styles.selectedCategoryName,
-              ]}>
+              <Text
+                style={[
+                  styles.categoryName,
+                  shouldHighlight && styles.selectedCategoryName,
+                ]}
+              >
                 {category.name}
               </Text>
-              {category.product_count !== undefined && category.product_count > 0 && (
-                <Text style={styles.categoryDescription}>
-                  {category.product_count} {category.product_count === 1 ? "product" : "products"}
-                </Text>
-              )}
+              {category.product_count !== undefined &&
+                category.product_count > 0 && (
+                  <Text style={styles.categoryDescription}>
+                    {category.product_count}{" "}
+                    {category.product_count === 1 ? "product" : "products"}
+                  </Text>
+                )}
             </View>
           </View>
         </TouchableOpacity>
 
         {/* Tick button - click to select without expanding */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.tickButton}
           onPress={() => onSelect(category)}
           activeOpacity={0.7}
         >
-          <View style={[
-            styles.tickContainer,
-            isSelected ? styles.tickSelected : styles.tickUnselected
-          ]}>
+          <View
+            style={[
+              styles.tickContainer,
+              isSelected ? styles.tickSelected : styles.tickUnselected,
+            ]}
+          >
             {isSelected && <Ionicons name="checkmark" size={16} color="#fff" />}
           </View>
         </TouchableOpacity>
@@ -1039,10 +1132,10 @@ const CategoryTreeItem = ({
 // Add Category Button Component (appears at the end of each category list)
 const AddCategoryButton = ({ depth, parentId, onPress, isCreating }) => {
   if (isCreating) return null;
-  
+
   return (
     <TouchableOpacity
-      style={[styles.addCategoryButton, { paddingLeft: 20 + (depth * 20) }]}
+      style={[styles.addCategoryButton, { paddingLeft: 20 + depth * 20 }]}
       onPress={() => onPress(parentId)}
       activeOpacity={0.7}
     >
@@ -1055,17 +1148,19 @@ const AddCategoryButton = ({ depth, parentId, onPress, isCreating }) => {
 };
 
 // Create Category Input Component
-const CreateCategoryInput = ({ 
-  depth, 
-  parentId, 
-  onConfirm, 
-  onCancel, 
-  newCategoryName, 
+const CreateCategoryInput = ({
+  depth,
+  parentId,
+  onConfirm,
+  onCancel,
+  newCategoryName,
   setNewCategoryName,
-  creatingCategoryLoading 
+  creatingCategoryLoading,
 }) => {
   return (
-    <View style={[styles.createCategoryInput, { paddingLeft: 20 + (depth * 20) }]}>
+    <View
+      style={[styles.createCategoryInput, { paddingLeft: 20 + depth * 20 }]}
+    >
       <View style={styles.createCategoryInputRow}>
         <TextInput
           style={styles.createCategoryTextInput}
@@ -1083,7 +1178,11 @@ const CreateCategoryInput = ({
           {creatingCategoryLoading ? (
             <ActivityIndicator size="small" color="#10B981" />
           ) : (
-            <Ionicons name="checkmark" size={20} color={newCategoryName.trim() ? "#10B981" : "#9CA3AF"} />
+            <Ionicons
+              name="checkmark"
+              size={20}
+              color={newCategoryName.trim() ? "#10B981" : "#9CA3AF"}
+            />
           )}
         </TouchableOpacity>
         <TouchableOpacity
@@ -1115,14 +1214,14 @@ const renderCategoryList = ({
   setNewCategoryName,
   creatingCategoryLoading,
   parentId = null,
-  shouldRenderAddButton = true // New parameter to control when to show add button
+  shouldRenderAddButton = true, // New parameter to control when to show add button
 }) => {
   return (
     <View>
-      {categories.map(category => {
+      {categories.map((category) => {
         const hasChildren = category.children && category.children.length > 0;
         const isExpanded = expandedCategories[category.id] || false;
-        
+
         return (
           <View key={category.id}>
             <CategoryTreeItem
@@ -1133,7 +1232,7 @@ const renderCategoryList = ({
               expandedCategories={expandedCategories}
               onToggleExpand={onToggleExpand}
             />
-            
+
             {isExpanded && hasChildren && (
               <View>
                 {renderCategoryList({
@@ -1152,14 +1251,15 @@ const renderCategoryList = ({
                   setNewCategoryName,
                   creatingCategoryLoading,
                   parentId: category.id,
-                  shouldRenderAddButton: true
+                  shouldRenderAddButton: true,
                 })}
               </View>
             )}
-            
+
             {/* Add Category button at the end of children (always show if category is expanded) */}
-            {isExpanded && shouldRenderAddButton && (
-              isCreating && creatingParentId === category.id ? (
+            {isExpanded &&
+              shouldRenderAddButton &&
+              (isCreating && creatingParentId === category.id ? (
                 <CreateCategoryInput
                   depth={depth + 1}
                   parentId={category.id}
@@ -1176,8 +1276,7 @@ const renderCategoryList = ({
                   onPress={onCreateCategory}
                   isCreating={isCreating}
                 />
-              )
-            )}
+              ))}
           </View>
         );
       })}
@@ -1214,7 +1313,8 @@ export default function AddProductScreen({ route, navigation }) {
 
   // Category creation states
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
-  const [creatingCategoryParentId, setCreatingCategoryParentId] = useState(null);
+  const [creatingCategoryParentId, setCreatingCategoryParentId] =
+    useState(null);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [creatingCategoryLoading, setCreatingCategoryLoading] = useState(false);
 
@@ -1266,7 +1366,8 @@ export default function AddProductScreen({ route, navigation }) {
     const loadBusinessServerId = async () => {
       if (businessId && user?.id) {
         try {
-          const business = await databaseService.BusinessService.getBusinessById(businessId);
+          const business =
+            await databaseService.BusinessService.getBusinessById(businessId);
           if (business && business.server_id) {
             setBusinessServerId(business.server_id);
             console.log("✅ Business server ID loaded:", business.server_id);
@@ -1281,12 +1382,12 @@ export default function AddProductScreen({ route, navigation }) {
     loadBusinessServerId();
   }, [businessId, user?.id]);
 
-  // Load initial data after businessServerId is available
+  // Load initial data after businessServerId and user are available
   useEffect(() => {
-    if (businessServerId) {
+    if (businessServerId && user?.id) {
       loadInitialData();
     }
-  }, [businessServerId]);
+  }, [businessServerId, user?.id]);
 
   // Auto-generate SKU when product name changes
   useEffect(() => {
@@ -1322,7 +1423,7 @@ export default function AddProductScreen({ route, navigation }) {
 
   // Update form when variant states change
   useEffect(() => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
       has_variants: hasVariants,
       variant_type: variantType,
@@ -1332,7 +1433,11 @@ export default function AddProductScreen({ route, navigation }) {
   // Expand tree to show selected category when modal opens
   useEffect(() => {
     if (showCategoryModal && form.category && categoryTree.length > 0) {
-      const expanded = expandToSelectedCategory(form.category, categoryTree, expandedCategories);
+      const expanded = expandToSelectedCategory(
+        form.category,
+        categoryTree,
+        expandedCategories,
+      );
       setExpandedCategories(expanded);
     }
   }, [showCategoryModal, form.category, categoryTree]);
@@ -1341,13 +1446,14 @@ export default function AddProductScreen({ route, navigation }) {
   const loadInitialData = async () => {
     try {
       setLoading(true);
-      
+
       if (businessId && user?.id) {
-        const localCategories = await databaseService.CategoryService.getCategoriesByBusiness(
-          businessId, 
-          user.id
-        );
-        
+        const localCategories =
+          await databaseService.CategoryService.getCategoriesByBusiness(
+            businessId,
+            user.server_id,
+          );
+
         if (localCategories && localCategories.length > 0) {
           const tree = buildCategoryTree(localCategories);
           setCategories(localCategories);
@@ -1368,7 +1474,6 @@ export default function AddProductScreen({ route, navigation }) {
       setLoading(false);
 
       fetchUpdatesInBackground();
-
     } catch (error) {
       console.error("Error loading initial data:", error);
       setLoading(false);
@@ -1385,14 +1490,21 @@ export default function AddProductScreen({ route, navigation }) {
         for (const cat of response.categories) {
           const localCategory = {
             ...cat,
-            id: cat.id,                // server UUID becomes local ID
-            business_id: businessId,   // local business ID
+            id: cat.id, // server UUID becomes local ID
+            business_id: businessId, // local business ID
             business_server_id: cat.business_id, // store server business UUID
-            server_id: cat.id,         // same as id
+            server_id: cat.id, // same as id
           };
-          await databaseService.CategoryService.saveCategory(localCategory, user?.id);
+          await databaseService.CategoryService.saveCategory(
+            localCategory,
+            user.id,
+          );
         }
-        const updatedLocal = await databaseService.CategoryService.getCategoriesByBusiness(businessId, user?.id);
+        const updatedLocal =
+          await databaseService.CategoryService.getCategoriesByBusiness(
+            businessId,
+            user?.id,
+          );
         const tree = buildCategoryTree(updatedLocal);
         setCategories(updatedLocal);
         setCategoryTree(tree);
@@ -1419,26 +1531,30 @@ export default function AddProductScreen({ route, navigation }) {
   };
 
   const toggleCategoryExpansion = (categoryId) => {
-    setExpandedCategories(prev => ({
+    setExpandedCategories((prev) => ({
       ...prev,
-      [categoryId]: !prev[categoryId]
+      [categoryId]: !prev[categoryId],
     }));
   };
 
   const fetchUpdatesInBackground = async () => {
     if (!businessServerId) return;
     try {
-      const categoriesResponse = await productAPI.getCategories(businessServerId);
+      const categoriesResponse =
+        await productAPI.getCategories(businessServerId);
       if (categoriesResponse.success && categoriesResponse.categories) {
         for (const category of categoriesResponse.categories) {
-          await databaseService.CategoryService.saveCategory(category, user?.id);
+          await databaseService.CategoryService.saveCategory(
+            category,
+            user?.id,
+          );
         }
-        
+
         const tree = buildCategoryTree(categoriesResponse.categories);
         setCategories(categoriesResponse.categories);
         setCategoryTree(tree);
       }
-      
+
       const taxesResponse = await productAPI.getTaxes();
       if (taxesResponse.success && taxesResponse.taxes) {
         for (const tax of taxesResponse.taxes) {
@@ -1446,7 +1562,6 @@ export default function AddProductScreen({ route, navigation }) {
         }
         setTaxes(taxesResponse.taxes);
       }
-      
     } catch (error) {
       console.error("Error fetching updates in background:", error);
     }
@@ -1455,18 +1570,18 @@ export default function AddProductScreen({ route, navigation }) {
   const fetchDataFromAPI = async () => {
     if (!businessServerId) return;
     try {
-      const categoriesResponse = await productAPI.getCategories(businessServerId);
+      const categoriesResponse =
+        await productAPI.getCategories(businessServerId);
       if (categoriesResponse.success) {
         const tree = buildCategoryTree(categoriesResponse.categories || []);
         setCategories(categoriesResponse.categories || []);
         setCategoryTree(tree);
       }
-      
+
       const taxesResponse = await productAPI.getTaxes();
       if (taxesResponse.success) {
         setTaxes(taxesResponse.taxes || []);
       }
-      
     } catch (error) {
       console.error("Error fetching data from API:", error);
     }
@@ -1475,14 +1590,18 @@ export default function AddProductScreen({ route, navigation }) {
   const fetchCategoriesFromAPI = async () => {
     if (!businessServerId) return;
     try {
-      const categoriesResponse = await productAPI.getCategories(businessServerId);
+      const categoriesResponse =
+        await productAPI.getCategories(businessServerId);
       if (categoriesResponse.success && categoriesResponse.categories) {
         const tree = buildCategoryTree(categoriesResponse.categories);
         setCategories(categoriesResponse.categories);
         setCategoryTree(tree);
-        
+
         for (const category of categoriesResponse.categories) {
-          await databaseService.CategoryService.saveCategory(category, user?.id);
+          await databaseService.CategoryService.saveCategory(
+            category,
+            user?.id,
+          );
         }
       }
     } catch (error) {
@@ -1495,7 +1614,7 @@ export default function AddProductScreen({ route, navigation }) {
       const taxesResponse = await productAPI.getTaxes();
       if (taxesResponse.success && taxesResponse.taxes) {
         setTaxes(taxesResponse.taxes);
-        
+
         for (const tax of taxesResponse.taxes) {
           await databaseService.TaxService.saveTax(tax);
         }
@@ -1508,15 +1627,15 @@ export default function AddProductScreen({ route, navigation }) {
   // Handle category selection
   const handleCategorySelect = (category) => {
     handleChange("category", category.id);
-    
+
     // Automatically expand the category if it has children
     if (category.children && category.children.length > 0) {
-      setExpandedCategories(prev => ({
+      setExpandedCategories((prev) => ({
         ...prev,
-        [category.id]: true
+        [category.id]: true,
       }));
     }
-    
+
     setShowCategoryModal(false);
     // Reset creation state
     setIsCreatingCategory(false);
@@ -1537,7 +1656,7 @@ export default function AddProductScreen({ route, navigation }) {
     }
 
     setCreatingCategoryLoading(true);
-    
+
     try {
       const categoryData = {
         business_id: businessServerId, // use server UUID
@@ -1548,25 +1667,34 @@ export default function AddProductScreen({ route, navigation }) {
       };
 
       console.log("Creating category:", categoryData);
-      
+
       const response = await productAPI.createCategory(categoryData);
-      
+
       if (response.success) {
         // Refresh categories from server
         await refreshCategoriesFromServer();
-        
+        console.log(
+          "🔍 Saving category with user.id:",
+          user.id,
+          "businessId:",
+          businessId,
+        );
+
         // Reset creation state
         setIsCreatingCategory(false);
         setCreatingCategoryParentId(null);
         setNewCategoryName("");
-        
+
         // Select the newly created category
         handleChange("category", response.category.id);
-        
+
         // Close the modal
         setShowCategoryModal(false);
-        
-        Alert.alert("Success", `Category "${newCategoryName}" created and selected`);
+
+        Alert.alert(
+          "Success",
+          `Category "${newCategoryName}" created and selected`,
+        );
       } else {
         Alert.alert("Error", response.error || "Failed to create category");
       }
@@ -1668,7 +1796,7 @@ export default function AddProductScreen({ route, navigation }) {
   const toggleVariantType = (type) => {
     setVariantType(type);
     setHasVariants(type !== "none");
-    
+
     if (type === "none") {
       setAttributes([]);
       setVariants([]);
@@ -1762,22 +1890,36 @@ export default function AddProductScreen({ route, navigation }) {
   // Variant generation
   const generateVariants = () => {
     if (attributes.length === 0) {
-      Alert.alert("No Attributes", "Please add attributes before generating variants.");
+      Alert.alert(
+        "No Attributes",
+        "Please add attributes before generating variants.",
+      );
       return;
     }
 
     for (const attr of attributes) {
       if (!attr.name.trim()) {
-        Alert.alert("Invalid Attribute", "Please enter a name for all attributes.");
+        Alert.alert(
+          "Invalid Attribute",
+          "Please enter a name for all attributes.",
+        );
         return;
       }
       if (attr.values.length === 0) {
-        Alert.alert("No Values", `Please add values for attribute "${attr.name}".`);
+        Alert.alert(
+          "No Values",
+          `Please add values for attribute "${attr.name}".`,
+        );
         return;
       }
     }
 
-    const generateCombinations = (arrays, index = 0, current = {}, combination = []) => {
+    const generateCombinations = (
+      arrays,
+      index = 0,
+      current = {},
+      combination = [],
+    ) => {
       if (index === arrays.length) {
         combination.push({ ...current });
         return;
@@ -1798,15 +1940,19 @@ export default function AddProductScreen({ route, navigation }) {
         .map(([key, value]) => `${key}: ${value}`)
         .join(" / ");
 
-      const attributeValues = Object.entries(combo).map(([attribute_name, value]) => ({
-        attribute_name,
-        value
-      }));
+      const attributeValues = Object.entries(combo).map(
+        ([attribute_name, value]) => ({
+          attribute_name,
+          value,
+        }),
+      );
 
       return {
         id: nanoid(),
         name: variantName,
-        sku: form.base_sku ? `${form.base_sku}-${index + 1}` : `V-${Date.now()}-${index + 1}`,
+        sku: form.base_sku
+          ? `${form.base_sku}-${index + 1}`
+          : `V-${Date.now()}-${index + 1}`,
         barcode: "",
         cost_price: form.base_cost_price || "",
         selling_price: form.base_selling_price || "",
@@ -1819,13 +1965,16 @@ export default function AddProductScreen({ route, navigation }) {
     });
 
     setVariants(newVariants);
-    Alert.alert("Variants Generated", `Generated ${newVariants.length} variants.`);
+    Alert.alert(
+      "Variants Generated",
+      `Generated ${newVariants.length} variants.`,
+    );
   };
 
   const updateVariant = (index, field, value) => {
     const newVariants = [...variants];
     newVariants[index][field] = value;
-    
+
     if (field === "is_default" && value === true) {
       newVariants.forEach((v, i) => {
         if (i !== index) {
@@ -1833,7 +1982,7 @@ export default function AddProductScreen({ route, navigation }) {
         }
       });
     }
-    
+
     setVariants(newVariants);
   };
 
@@ -1854,47 +2003,80 @@ export default function AddProductScreen({ route, navigation }) {
   };
 
   const validateForm = () => {
+    // Debug: print all form inputs and variant states
+    console.log("🔍 Form validation - Current state:", {
+      name: form.name,
+      description: form.description,
+      category: form.category,
+      product_type: form.product_type,
+      hasVariants,
+      variantType,
+      attributes: attributes.length,
+      variants: variants.length,
+      base_sku: form.base_sku,
+      base_barcode: form.base_barcode,
+      base_cost_price: form.base_cost_price,
+      base_selling_price: form.base_selling_price,
+      base_wholesale_price: form.base_wholesale_price,
+      tax: form.tax,
+      tax_inclusive: form.tax_inclusive,
+      unit_of_measure: form.unit_of_measure,
+      reorder_level: form.reorder_level,
+      is_trackable: form.is_trackable,
+      is_active: form.is_active,
+      business: form.business,
+      shop: form.shop,
+    });
+
     const newErrors = {};
 
+    // Product name is always required
     if (!form.name.trim()) {
       newErrors.name = "Product name is required";
     }
 
+    // SKU is always required
     if (!form.base_sku.trim()) {
       newErrors.base_sku = "SKU is required";
     } else if (form.base_sku.length > 100) {
       newErrors.base_sku = "SKU cannot exceed 100 characters";
     }
 
-    const costPrice = parseFloat(form.base_cost_price);
-    const sellingPrice = parseFloat(form.base_selling_price);
+    // --- Pricing validation only for products without variants ---
+    if (!hasVariants) {
+      const sellingPrice = parseFloat(form.base_selling_price);
+      if (!form.base_selling_price || isNaN(sellingPrice) || sellingPrice < 0) {
+        newErrors.base_selling_price =
+          "Selling price is required and must be a valid number";
+      }
 
-    if (!form.base_selling_price || isNaN(sellingPrice) || sellingPrice < 0) {
-      newErrors.base_selling_price =
-        "Selling price is required and must be a valid number";
+      // Optional cost price – only check if provided
+      const costPrice = parseFloat(form.base_cost_price);
+      if (form.base_cost_price && (isNaN(costPrice) || costPrice < 0)) {
+        newErrors.base_cost_price = "Cost price must be a valid number";
+      }
+
+      // Optional wholesale price – only check if provided
+      const wholesalePrice = parseFloat(form.base_wholesale_price);
+      if (
+        form.base_wholesale_price &&
+        (isNaN(wholesalePrice) || wholesalePrice < 0)
+      ) {
+        newErrors.base_wholesale_price =
+          "Wholesale price must be a valid number";
+      }
     }
 
-    if (form.base_cost_price && (isNaN(costPrice) || costPrice < 0)) {
-      newErrors.base_cost_price = "Cost price must be a valid number";
-    }
-
-    if (
-      form.base_wholesale_price &&
-      (isNaN(parseFloat(form.base_wholesale_price)) ||
-        parseFloat(form.base_wholesale_price) < 0)
-    ) {
-      newErrors.base_wholesale_price = "Wholesale price must be a valid number";
-    }
-
+    // --- Variant validation (if applicable) ---
     if (hasVariants && variantType !== "none") {
       if (attributes.length === 0) {
         newErrors.variants = "Please add attributes for product variants";
       }
-      
+
       if (variants.length === 0) {
         newErrors.variants = "Please generate variants";
       }
-      
+
       variants.forEach((variant, index) => {
         if (!variant.selling_price || parseFloat(variant.selling_price) <= 0) {
           newErrors[`variant_${index}_selling_price`] =
@@ -1903,16 +2085,24 @@ export default function AddProductScreen({ route, navigation }) {
       });
     }
 
+    // Barcode validation (optional but length check)
     if (form.base_barcode && form.base_barcode.length > 100) {
       newErrors.base_barcode = "Barcode cannot exceed 100 characters";
     }
 
+    // Business is required (should always be set)
     if (!form.business) {
       newErrors.business = "Business is required";
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const isValid = Object.keys(newErrors).length === 0;
+    console.log(
+      "🔍 Validation result:",
+      isValid ? "PASSED" : "FAILED",
+      newErrors,
+    );
+    return isValid;
   };
 
   const handleSubmit = async () => {
@@ -1920,14 +2110,14 @@ export default function AddProductScreen({ route, navigation }) {
       Alert.alert("Validation Error", "Please fix the errors in the form");
       return;
     }
-    
+
     if (!businessServerId) {
       Alert.alert("Error", "Business ID not found. Please try again.");
       return;
     }
-    
+
     setSaving(true);
-    
+
     try {
       const productData = {
         name: form.name.trim(),
@@ -1936,42 +2126,60 @@ export default function AddProductScreen({ route, navigation }) {
         product_type: form.product_type,
         has_variants: hasVariants,
         variant_type: variantType,
-        base_barcode: !hasVariants ? (form.base_barcode || null) : null,
+        base_barcode: !hasVariants ? form.base_barcode || null : null,
         base_sku: form.base_sku.trim(),
-        base_cost_price: form.base_cost_price ? parseFloat(form.base_cost_price) : null,
+        base_cost_price: form.base_cost_price
+          ? parseFloat(form.base_cost_price)
+          : null,
         base_selling_price: parseFloat(form.base_selling_price),
-        base_wholesale_price: form.base_wholesale_price ? parseFloat(form.base_wholesale_price) : null,
+        base_wholesale_price: form.base_wholesale_price
+          ? parseFloat(form.base_wholesale_price)
+          : null,
         tax_id: form.tax || null,
         tax_inclusive: form.tax_inclusive,
         unit_of_measure: form.unit_of_measure,
         reorder_level: parseInt(form.reorder_level) || 10,
         is_trackable: form.is_trackable,
         business_id: businessServerId, // use server UUID
-        attributes: hasVariants && variantType !== "none" ? attributes.map(attr => ({
-          name: attr.name.trim(),
-          values: attr.values.filter(v => v.trim()).map(value => ({ value: value.trim() })),
-        })) : [],
-        variants: hasVariants && variantType !== "none" ? variants.map(variant => ({
-          name: variant.name.trim() || `Variant ${variants.indexOf(variant) + 1}`,
-          sku: variant.sku.trim(),
-          barcode: variant.barcode || null,
-          cost_price: variant.cost_price ? parseFloat(variant.cost_price) : null,
-          selling_price: parseFloat(variant.selling_price),
-          wholesale_price: variant.wholesale_price ? parseFloat(variant.wholesale_price) : null,
-          is_default: variant.is_default || false,
-          attribute_values: variant.attribute_values.map(attr => ({
-            attribute_name: attr.attribute_name,
-            value: attr.value
-          })),
-          initial_stock: parseInt(variant.initial_stock) || 0,
-        })) : [],
+        attributes:
+          hasVariants && variantType !== "none"
+            ? attributes.map((attr) => ({
+                name: attr.name.trim(),
+                values: attr.values
+                  .filter((v) => v.trim())
+                  .map((value) => ({ value: value.trim() })),
+              }))
+            : [],
+        variants:
+          hasVariants && variantType !== "none"
+            ? variants.map((variant) => ({
+                name:
+                  variant.name.trim() ||
+                  `Variant ${variants.indexOf(variant) + 1}`,
+                sku: variant.sku.trim(),
+                barcode: variant.barcode || null,
+                cost_price: variant.cost_price
+                  ? parseFloat(variant.cost_price)
+                  : null,
+                selling_price: parseFloat(variant.selling_price),
+                wholesale_price: variant.wholesale_price
+                  ? parseFloat(variant.wholesale_price)
+                  : null,
+                is_default: variant.is_default || false,
+                attribute_values: variant.attribute_values.map((attr) => ({
+                  attribute_name: attr.attribute_name,
+                  value: attr.value,
+                })),
+                initial_stock: parseInt(variant.initial_stock) || 0,
+              }))
+            : [],
         auto_generate_barcode: autoGenerateBarcode && !hasVariants,
       };
-      
+
       console.log("Submitting product data:", productData);
-      
+
       const response = await productAPI.createProduct(productData);
-      
+
       if (response.success) {
         Alert.alert(
           "Success",
@@ -1987,30 +2195,29 @@ export default function AddProductScreen({ route, navigation }) {
                   shopName,
                   businessId,
                 });
-              }
+              },
             },
             {
               text: "Add Another",
               onPress: () => {
                 resetForm();
-              }
+              },
             },
             {
               text: "Back to List",
               onPress: () => {
-                navigation.navigate("ShopProducts", { 
-                  shopId, 
-                  shopName, 
-                  businessId 
+                navigation.navigate("ShopProducts", {
+                  shopId,
+                  shopName,
+                  businessId,
                 });
-              }
-            }
-          ]
+              },
+            },
+          ],
         );
       } else {
         Alert.alert("Error", response.error || "Failed to create product");
       }
-      
     } catch (error) {
       console.error("Error submitting product:", error);
       Alert.alert("Error", "Failed to create product. Please try again.");
@@ -2068,7 +2275,7 @@ export default function AddProductScreen({ route, navigation }) {
       animationType="slide"
       onRequestClose={() => setShowAttributeModal(false)}
     >
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.modalOverlay}
       >
@@ -2082,7 +2289,7 @@ export default function AddProductScreen({ route, navigation }) {
               <Ionicons name="close" size={24} color="#6B7280" />
             </TouchableOpacity>
           </View>
-          
+
           <FlatList
             data={PREDEFINED_ATTRIBUTES}
             keyExtractor={(item) => item.name}
@@ -2090,7 +2297,10 @@ export default function AddProductScreen({ route, navigation }) {
               <TouchableOpacity
                 style={styles.presetAttributeItem}
                 onPress={() => {
-                  setAttributes([...attributes, { name: item.name, values: [...item.values] }]);
+                  setAttributes([
+                    ...attributes,
+                    { name: item.name, values: [...item.values] },
+                  ]);
                   setShowAttributeModal(false);
                 }}
               >
@@ -2114,122 +2324,124 @@ export default function AddProductScreen({ route, navigation }) {
   );
 
   const renderCategoryModal = () => (
-  <Modal
-    visible={showCategoryModal}
-    transparent={true}
-    animationType="slide"
-    onRequestClose={() => {
-      setShowCategoryModal(false);
-      setIsCreatingCategory(false);
-      setCreatingCategoryParentId(null);
-      setNewCategoryName("");
-      // Reset expanded categories when modal closes
-      setExpandedCategories({});
-    }}
-  >
-    <View style={styles.modalOverlay}>
-      <View style={styles.modalContent}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Select Category</Text>
-          <TouchableOpacity
-            onPress={() => {
-              setShowCategoryModal(false);
-              setIsCreatingCategory(false);
-              setCreatingCategoryParentId(null);
-              setNewCategoryName("");
-              // Reset expanded categories when modal closes
-              setExpandedCategories({});
-            }}
-            style={styles.modalCloseButton}
-          >
-            <Ionicons name="close" size={24} color="#6B7280" />
-          </TouchableOpacity>
-        </View>
-
-        {loading && !initialDataLoaded ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#FF6B00" />
-            <Text style={styles.loadingText}>Loading categories...</Text>
+    <Modal
+      visible={showCategoryModal}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => {
+        setShowCategoryModal(false);
+        setIsCreatingCategory(false);
+        setCreatingCategoryParentId(null);
+        setNewCategoryName("");
+        // Reset expanded categories when modal closes
+        setExpandedCategories({});
+      }}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select Category</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setShowCategoryModal(false);
+                setIsCreatingCategory(false);
+                setCreatingCategoryParentId(null);
+                setNewCategoryName("");
+                // Reset expanded categories when modal closes
+                setExpandedCategories({});
+              }}
+              style={styles.modalCloseButton}
+            >
+              <Ionicons name="close" size={24} color="#6B7280" />
+            </TouchableOpacity>
           </View>
-        ) : (
-          <ScrollView style={styles.categoryTreeScroll}>
-            {/* Root categories */}
-            {categoryTree.length > 0 ? (
-              <View>
-                {renderCategoryList({
-                  categories: categoryTree,
-                  depth: 0,
-                  selectedCategoryId: form.category,
-                  onSelect: handleCategorySelect,
-                  expandedCategories,
-                  onToggleExpand: toggleCategoryExpansion,
-                  onCreateCategory: startCreatingCategory,
-                  isCreating: isCreatingCategory,
-                  creatingParentId: creatingCategoryParentId,
-                  onCancelCreate: cancelCategoryCreation,
-                  onCreateConfirm: handleCreateCategory,
-                  newCategoryName,
-                  setNewCategoryName,
-                  creatingCategoryLoading,
-                  parentId: null,
-                  shouldRenderAddButton: true
-                })}
-                
-                {/* Root level add category button */}
-                {isCreatingCategory && creatingCategoryParentId === null ? (
-                  <CreateCategoryInput
-                    depth={0}
-                    parentId={null}
-                    onConfirm={handleCreateCategory}
-                    onCancel={cancelCategoryCreation}
-                    newCategoryName={newCategoryName}
-                    setNewCategoryName={setNewCategoryName}
-                    creatingCategoryLoading={creatingCategoryLoading}
-                  />
-                ) : (
-                  <AddCategoryButton
-                    depth={0}
-                    parentId={null}
-                    onPress={startCreatingCategory}
-                    isCreating={isCreatingCategory}
-                  />
-                )}
-              </View>
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="folder-outline" size={48} color="#D1D5DB" />
-                <Text style={styles.emptyStateText}>No categories found</Text>
-                <Text style={styles.emptyStateSubtext}>
-                  Create your first category below.
-                </Text>
-                
-                {isCreatingCategory && creatingCategoryParentId === null ? (
-                  <CreateCategoryInput
-                    depth={0}
-                    parentId={null}
-                    onConfirm={handleCreateCategory}
-                    onCancel={cancelCategoryCreation}
-                    newCategoryName={newCategoryName}
-                    setNewCategoryName={setNewCategoryName}
-                    creatingCategoryLoading={creatingCategoryLoading}
-                  />
-                ) : (
-                  <TouchableOpacity
-                    style={styles.emptyStateButton}
-                    onPress={() => startCreatingCategory(null)}
-                  >
-                    <Ionicons name="add-circle" size={20} color="#3B82F6" />
-                    <Text style={styles.emptyStateButtonText}>Add First Category</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-          </ScrollView>
-        )}
+
+          {loading && !initialDataLoaded ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#FF6B00" />
+              <Text style={styles.loadingText}>Loading categories...</Text>
+            </View>
+          ) : (
+            <ScrollView style={styles.categoryTreeScroll}>
+              {/* Root categories */}
+              {categoryTree.length > 0 ? (
+                <View>
+                  {renderCategoryList({
+                    categories: categoryTree,
+                    depth: 0,
+                    selectedCategoryId: form.category,
+                    onSelect: handleCategorySelect,
+                    expandedCategories,
+                    onToggleExpand: toggleCategoryExpansion,
+                    onCreateCategory: startCreatingCategory,
+                    isCreating: isCreatingCategory,
+                    creatingParentId: creatingCategoryParentId,
+                    onCancelCreate: cancelCategoryCreation,
+                    onCreateConfirm: handleCreateCategory,
+                    newCategoryName,
+                    setNewCategoryName,
+                    creatingCategoryLoading,
+                    parentId: null,
+                    shouldRenderAddButton: true,
+                  })}
+
+                  {/* Root level add category button */}
+                  {isCreatingCategory && creatingCategoryParentId === null ? (
+                    <CreateCategoryInput
+                      depth={0}
+                      parentId={null}
+                      onConfirm={handleCreateCategory}
+                      onCancel={cancelCategoryCreation}
+                      newCategoryName={newCategoryName}
+                      setNewCategoryName={setNewCategoryName}
+                      creatingCategoryLoading={creatingCategoryLoading}
+                    />
+                  ) : (
+                    <AddCategoryButton
+                      depth={0}
+                      parentId={null}
+                      onPress={startCreatingCategory}
+                      isCreating={isCreatingCategory}
+                    />
+                  )}
+                </View>
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="folder-outline" size={48} color="#D1D5DB" />
+                  <Text style={styles.emptyStateText}>No categories found</Text>
+                  <Text style={styles.emptyStateSubtext}>
+                    Create your first category below.
+                  </Text>
+
+                  {isCreatingCategory && creatingCategoryParentId === null ? (
+                    <CreateCategoryInput
+                      depth={0}
+                      parentId={null}
+                      onConfirm={handleCreateCategory}
+                      onCancel={cancelCategoryCreation}
+                      newCategoryName={newCategoryName}
+                      setNewCategoryName={setNewCategoryName}
+                      creatingCategoryLoading={creatingCategoryLoading}
+                    />
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.emptyStateButton}
+                      onPress={() => startCreatingCategory(null)}
+                    >
+                      <Ionicons name="add-circle" size={20} color="#3B82F6" />
+                      <Text style={styles.emptyStateButtonText}>
+                        Add First Category
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </ScrollView>
+          )}
+        </View>
       </View>
-    </View>
-  </Modal>
-);
+    </Modal>
+  );
 
   const renderUnitModal = () => (
     <Modal
@@ -2469,9 +2681,7 @@ export default function AddProductScreen({ route, navigation }) {
                     !form.category && styles.placeholderText,
                   ]}
                 >
-                  {selectedCategory
-                    ? selectedCategory.name
-                    : "Select Category"}
+                  {selectedCategory ? selectedCategory.name : "Select Category"}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color="#6B7280" />
               </TouchableOpacity>
@@ -2573,9 +2783,184 @@ export default function AddProductScreen({ route, navigation }) {
             </View>
           </View>
 
-          {/* PRICING SECTION - MOVED BEFORE VARIANTS */}
+          {/* Variant Configuration - MOVED BEFORE PRICING */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>💰 Pricing *</Text>
+            <Text style={styles.sectionTitle}>🔄 Product Variants</Text>
+
+            <View style={styles.variantToggle}>
+              <Text style={styles.variantToggleLabel}>Has Variants:</Text>
+              <Switch
+                value={hasVariants}
+                onValueChange={toggleHasVariants}
+                trackColor={{ false: "#D1D5DB", true: "#FF6B00" }}
+                thumbColor="#fff"
+              />
+            </View>
+
+            {hasVariants && (
+              <>
+                <View style={styles.variantTypeSection}>
+                  <Text style={styles.variantTypeLabel}>Variant Type:</Text>
+                  <View style={styles.variantTypeOptions}>
+                    {VARIANT_TYPES.map((type) => (
+                      <TouchableOpacity
+                        key={type.id}
+                        style={[
+                          styles.variantTypeOption,
+                          variantType === type.id &&
+                            styles.selectedVariantTypeOption,
+                        ]}
+                        onPress={() => toggleVariantType(type.id)}
+                      >
+                        <Ionicons
+                          name={type.icon}
+                          size={16}
+                          color={
+                            variantType === type.id ? "#FF6B00" : "#6B7280"
+                          }
+                        />
+                        <Text
+                          style={[
+                            styles.variantTypeOptionText,
+                            variantType === type.id &&
+                              styles.selectedVariantTypeOptionText,
+                          ]}
+                        >
+                          {type.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {variantType !== "none" && (
+                  <>
+                    {/* Attributes Section */}
+                    <View style={styles.attributesSection}>
+                      <View style={styles.sectionHeader}>
+                        <Text style={styles.attributesTitle}>Attributes</Text>
+                        <View style={styles.attributeButtons}>
+                          <TouchableOpacity
+                            style={styles.addButton}
+                            onPress={addAttribute}
+                          >
+                            <Ionicons name="add" size={20} color="#fff" />
+                            <Text style={styles.addButtonText}>Custom</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.addButton, styles.presetButton]}
+                            onPress={() => setShowAttributeModal(true)}
+                          >
+                            <Ionicons name="list" size={20} color="#fff" />
+                            <Text style={styles.addButtonText}>Preset</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      {attributes.length === 0 ? (
+                        <View style={styles.emptyAttributes}>
+                          <Ionicons
+                            name="pricetag-outline"
+                            size={48}
+                            color="#D1D5DB"
+                          />
+                          <Text style={styles.emptyAttributesText}>
+                            No attributes added
+                          </Text>
+                          <Text style={styles.emptyAttributesSubtext}>
+                            Add attributes like Size, Color, Weight, etc.
+                          </Text>
+                        </View>
+                      ) : (
+                        attributes.map((attribute, index) => (
+                          <AttributeItem
+                            key={index}
+                            attribute={attribute}
+                            index={index}
+                            onUpdate={updateAttribute}
+                            onRemove={removeAttribute}
+                            onAddValue={addAttributeValue}
+                          />
+                        ))
+                      )}
+                    </View>
+
+                    {/* Variants Section */}
+                    <View style={styles.variantsSection}>
+                      <View style={styles.sectionHeader}>
+                        <Text style={styles.variantsTitle}>
+                          Variants{" "}
+                          {variants.length > 0 && `(${variants.length})`}
+                        </Text>
+                        <View style={styles.variantButtons}>
+                          {attributes.length > 0 && (
+                            <TouchableOpacity
+                              style={styles.generateButton}
+                              onPress={generateVariants}
+                            >
+                              <Ionicons name="shuffle" size={20} color="#fff" />
+                              <Text style={styles.generateButtonText}>
+                                Generate
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                          {variants.length > 0 && (
+                            <TouchableOpacity
+                              style={styles.clearButton}
+                              onPress={clearVariants}
+                            >
+                              <Ionicons name="trash" size={20} color="#fff" />
+                              <Text style={styles.clearButtonText}>Clear</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+
+                      {variants.length === 0 ? (
+                        <View style={styles.emptyVariants}>
+                          <Ionicons
+                            name="options-outline"
+                            size={48}
+                            color="#D1D5DB"
+                          />
+                          <Text style={styles.emptyVariantsText}>
+                            No variants generated
+                          </Text>
+                          <Text style={styles.emptyVariantsSubtext}>
+                            Add attributes and click "Generate" to create
+                            variants
+                          </Text>
+                        </View>
+                      ) : (
+                        variants.map((variant, index) => (
+                          <VariantItem
+                            key={index}
+                            variant={variant}
+                            index={index}
+                            onUpdate={updateVariant}
+                            onRemove={removeVariant}
+                          />
+                        ))
+                      )}
+                    </View>
+                  </>
+                )}
+              </>
+            )}
+          </View>
+
+          {/* Pricing Section - Always visible */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>💰 Pricing</Text>
+            {hasVariants && variantType !== "none" && (
+              <View style={styles.basePriceInfo}>
+                <Ionicons name="information-circle" size={20} color="#3B82F6" />
+                <Text style={styles.basePriceInfoText}>
+                  These are the default prices. Variants will use them unless
+                  you set specific prices per variant.
+                </Text>
+              </View>
+            )}
 
             <View style={styles.pricingGrid}>
               <View style={styles.pricingCard}>
@@ -2602,7 +2987,7 @@ export default function AddProductScreen({ route, navigation }) {
                     {errors.base_cost_price}
                   </Text>
                 )}
-                <Text style={styles.pricingHint}>Buying price</Text>
+                <Text style={styles.pricingHint}>Buying price (optional)</Text>
               </View>
 
               <View style={styles.pricingCard}>
@@ -2629,7 +3014,11 @@ export default function AddProductScreen({ route, navigation }) {
                     {errors.base_selling_price}
                   </Text>
                 )}
-                <Text style={styles.pricingHint}>Retail price</Text>
+                <Text style={styles.pricingHint}>
+                  {hasVariants
+                    ? "Default retail price (overridable per variant)"
+                    : "Retail price"}
+                </Text>
               </View>
 
               <View style={styles.pricingCard}>
@@ -2656,7 +3045,7 @@ export default function AddProductScreen({ route, navigation }) {
                     {errors.base_wholesale_price}
                   </Text>
                 )}
-                <Text style={styles.pricingHint}>Bulk price</Text>
+                <Text style={styles.pricingHint}>Bulk price (optional)</Text>
               </View>
 
               <View style={styles.pricingCard}>
@@ -2678,165 +3067,12 @@ export default function AddProductScreen({ route, navigation }) {
                 </Text>
               </View>
             </View>
-
-            {hasVariants && variantType !== "none" && (
-              <View style={styles.basePriceInfo}>
-                <Ionicons name="information-circle" size={20} color="#3B82F6" />
-                <Text style={styles.basePriceInfoText}>
-                  Base prices will be used as defaults for variants. You can override them in each variant.
-                </Text>
-              </View>
-            )}
           </View>
 
-          {/* Variant Configuration */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🔄 Product Variants</Text>
-            
-            <View style={styles.variantToggle}>
-              <Text style={styles.variantToggleLabel}>Has Variants:</Text>
-              <Switch
-                value={hasVariants}
-                onValueChange={toggleHasVariants}
-                trackColor={{ false: "#D1D5DB", true: "#FF6B00" }}
-                thumbColor="#fff"
-              />
-            </View>
-            
-            {hasVariants && (
-              <>
-                <View style={styles.variantTypeSection}>
-                  <Text style={styles.variantTypeLabel}>Variant Type:</Text>
-                  <View style={styles.variantTypeOptions}>
-                    {VARIANT_TYPES.map((type) => (
-                      <TouchableOpacity
-                        key={type.id}
-                        style={[
-                          styles.variantTypeOption,
-                          variantType === type.id && styles.selectedVariantTypeOption,
-                        ]}
-                        onPress={() => toggleVariantType(type.id)}
-                      >
-                        <Ionicons 
-                          name={type.icon} 
-                          size={16} 
-                          color={variantType === type.id ? "#FF6B00" : "#6B7280"} 
-                        />
-                        <Text style={[
-                          styles.variantTypeOptionText,
-                          variantType === type.id && styles.selectedVariantTypeOptionText,
-                        ]}>
-                          {type.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-                
-                {variantType !== "none" && (
-                  <>
-                    {/* Attributes Section */}
-                    <View style={styles.attributesSection}>
-                      <View style={styles.sectionHeader}>
-                        <Text style={styles.attributesTitle}>Attributes</Text>
-                        <View style={styles.attributeButtons}>
-                          <TouchableOpacity
-                            style={styles.addButton}
-                            onPress={addAttribute}
-                          >
-                            <Ionicons name="add" size={20} color="#fff" />
-                            <Text style={styles.addButtonText}>Custom</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[styles.addButton, styles.presetButton]}
-                            onPress={() => setShowAttributeModal(true)}
-                          >
-                            <Ionicons name="list" size={20} color="#fff" />
-                            <Text style={styles.addButtonText}>Preset</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                      
-                      {attributes.length === 0 ? (
-                        <View style={styles.emptyAttributes}>
-                          <Ionicons name="pricetag-outline" size={48} color="#D1D5DB" />
-                          <Text style={styles.emptyAttributesText}>No attributes added</Text>
-                          <Text style={styles.emptyAttributesSubtext}>
-                            Add attributes like Size, Color, Weight, etc.
-                          </Text>
-                        </View>
-                      ) : (
-                        attributes.map((attribute, index) => (
-                          <AttributeItem
-                            key={index}
-                            attribute={attribute}
-                            index={index}
-                            onUpdate={updateAttribute}
-                            onRemove={removeAttribute}
-                            onAddValue={addAttributeValue}
-                          />
-                        ))
-                      )}
-                    </View>
-                    
-                    {/* Variants Section */}
-                    <View style={styles.variantsSection}>
-                      <View style={styles.sectionHeader}>
-                        <Text style={styles.variantsTitle}>
-                          Variants {variants.length > 0 && `(${variants.length})`}
-                        </Text>
-                        <View style={styles.variantButtons}>
-                          {attributes.length > 0 && (
-                            <TouchableOpacity
-                              style={styles.generateButton}
-                              onPress={generateVariants}
-                            >
-                              <Ionicons name="shuffle" size={20} color="#fff" />
-                              <Text style={styles.generateButtonText}>Generate</Text>
-                            </TouchableOpacity>
-                          )}
-                          {variants.length > 0 && (
-                            <TouchableOpacity
-                              style={styles.clearButton}
-                              onPress={clearVariants}
-                            >
-                              <Ionicons name="trash" size={20} color="#fff" />
-                              <Text style={styles.clearButtonText}>Clear</Text>
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      </View>
-                      
-                      {variants.length === 0 ? (
-                        <View style={styles.emptyVariants}>
-                          <Ionicons name="options-outline" size={48} color="#D1D5DB" />
-                          <Text style={styles.emptyVariantsText}>No variants generated</Text>
-                          <Text style={styles.emptyVariantsSubtext}>
-                            Add attributes and click "Generate" to create variants
-                          </Text>
-                        </View>
-                      ) : (
-                        variants.map((variant, index) => (
-                          <VariantItem
-                            key={index}
-                            variant={variant}
-                            index={index}
-                            onUpdate={updateVariant}
-                            onRemove={removeVariant}
-                          />
-                        ))
-                      )}
-                    </View>
-                  </>
-                )}
-              </>
-            )}
-          </View>
-
-          {/* Enhanced Tax Settings with Variant Support */}
+          {/* Tax Settings */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>📊 Tax Settings</Text>
-            
+
             <View style={styles.taxRow}>
               <View style={styles.taxInfoContainer}>
                 <Text style={styles.inputLabel}>Tax</Text>
@@ -2857,7 +3093,7 @@ export default function AddProductScreen({ route, navigation }) {
                   <Ionicons name="chevron-down" size={20} color="#6B7280" />
                 </TouchableOpacity>
               </View>
-              
+
               {form.tax && (
                 <View style={styles.taxInclusiveToggle}>
                   <Text style={styles.taxLabel}>Tax Inclusive</Text>
@@ -2872,7 +3108,7 @@ export default function AddProductScreen({ route, navigation }) {
                 </View>
               )}
             </View>
-            
+
             {form.tax && (
               <>
                 {/* Tax Summary */}
@@ -2884,15 +3120,15 @@ export default function AddProductScreen({ route, navigation }) {
                   taxName={selectedTax?.name || "Tax"}
                   hasVariants={hasVariants && variantType !== "none"}
                 />
-                
+
                 {/* Tax Calculation Details */}
                 <View style={styles.taxDetailsSection}>
                   <Text style={styles.taxDetailsTitle}>
-                    {hasVariants && variantType !== "none" 
-                      ? `Tax Calculations (${variants.length} ${variants.length === 1 ? 'Variant' : 'Variants'})`
+                    {hasVariants && variantType !== "none"
+                      ? `Tax Calculations (${variants.length} ${variants.length === 1 ? "Variant" : "Variants"})`
                       : "Tax Calculation Details"}
                   </Text>
-                  
+
                   <TaxCalculationTable
                     variants={variants}
                     baseSellingPrice={form.base_selling_price}
@@ -2910,7 +3146,7 @@ export default function AddProductScreen({ route, navigation }) {
           {/* Product Details */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>📦 Product Details</Text>
-            
+
             <View style={styles.dualInput}>
               <View style={styles.inputHalf}>
                 <Text style={styles.inputLabel}>Unit of Measure *</Text>
@@ -2937,7 +3173,7 @@ export default function AddProductScreen({ route, navigation }) {
                   <Text style={styles.errorText}>{errors.unit_of_measure}</Text>
                 )}
               </View>
-              
+
               <View style={styles.inputHalf}>
                 <Text style={styles.inputLabel}>Reorder Level</Text>
                 <TextInput
@@ -2955,7 +3191,7 @@ export default function AddProductScreen({ route, navigation }) {
                 )}
               </View>
             </View>
-            
+
             {!hasVariants && (
               <View style={styles.dualInput}>
                 <View style={styles.inputHalf}>
@@ -2966,7 +3202,7 @@ export default function AddProductScreen({ route, navigation }) {
                     editable={false}
                   />
                 </View>
-                
+
                 <View style={styles.inputHalf}>
                   <Text style={styles.inputLabel}>Initial Stock</Text>
                   <TextInput
@@ -2977,7 +3213,7 @@ export default function AddProductScreen({ route, navigation }) {
                 </View>
               </View>
             )}
-            
+
             <View style={styles.toggleRow}>
               <View style={styles.toggleItem}>
                 <Text style={styles.toggleLabel}>Track Stock</Text>
@@ -2988,7 +3224,7 @@ export default function AddProductScreen({ route, navigation }) {
                   thumbColor="#fff"
                 />
               </View>
-              
+
               <View style={styles.toggleItem}>
                 <Text style={styles.toggleLabel}>Active Product</Text>
                 <Switch
@@ -3005,7 +3241,7 @@ export default function AddProductScreen({ route, navigation }) {
           {!hasVariants && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>📷 Product Barcode</Text>
-              
+
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Barcode</Text>
                 <View style={styles.barcodeSection}>
@@ -3017,7 +3253,9 @@ export default function AddProductScreen({ route, navigation }) {
                         errors.base_barcode && styles.inputError,
                       ]}
                       value={form.base_barcode}
-                      onChangeText={(text) => handleChange("base_barcode", text)}
+                      onChangeText={(text) =>
+                        handleChange("base_barcode", text)
+                      }
                       placeholder="Enter or scan barcode"
                       keyboardType="numeric"
                       maxLength={100}
@@ -3027,11 +3265,15 @@ export default function AddProductScreen({ route, navigation }) {
                         style={styles.clearButton}
                         onPress={() => handleChange("base_barcode", "")}
                       >
-                        <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                        <Ionicons
+                          name="close-circle"
+                          size={20}
+                          color="#9CA3AF"
+                        />
                       </TouchableOpacity>
                     ) : null}
                   </View>
-                  
+
                   <View style={styles.barcodeButtons}>
                     <TouchableOpacity
                       style={[
@@ -3050,7 +3292,7 @@ export default function AddProductScreen({ route, navigation }) {
                         </>
                       )}
                     </TouchableOpacity>
-                    
+
                     <TouchableOpacity
                       style={styles.barcodeButton}
                       onPress={handleGenerateBarcode}
@@ -3060,11 +3302,11 @@ export default function AddProductScreen({ route, navigation }) {
                     </TouchableOpacity>
                   </View>
                 </View>
-                
+
                 {errors.base_barcode && (
                   <Text style={styles.errorText}>{errors.base_barcode}</Text>
                 )}
-                
+
                 <View style={styles.barcodeOptions}>
                   <TouchableOpacity
                     style={styles.barcodeOption}
@@ -3084,7 +3326,7 @@ export default function AddProductScreen({ route, navigation }) {
                       Auto-generate barcode on save
                     </Text>
                   </TouchableOpacity>
-                  
+
                   <Text style={styles.barcodeHint}>
                     {scanningBarcode
                       ? "Scanning..."
@@ -3164,14 +3406,15 @@ export default function AddProductScreen({ route, navigation }) {
             <View style={styles.helpContent}>
               <Text style={styles.helpTitle}>Important Notes</Text>
               <Text style={styles.helpText}>
-                • Product name is required to auto-generate SKU{"\n"}
-                • Selling price is required for all products{"\n"}
-                • Base prices auto-fill variant prices{"\n"}
-                • Configure variants after setting base prices{"\n"}
-                • Tax inclusive means tax is included in price{"\n"}
-                • Click any category to expand it, tick means selected{"\n"}
-                • Scroll to bottom to add new category if not found{"\n"}
-                {hasVariants ? "• Each variant will have its own barcode" : "• Barcode is optional but recommended"}
+                • Product name is required to auto-generate SKU{"\n"}• Selling
+                price is required for all products{"\n"}• Base prices auto-fill
+                variant prices{"\n"}• Configure variants after setting base
+                prices{"\n"}• Tax inclusive means tax is included in price{"\n"}
+                • Click any category to expand it, tick means selected{"\n"}•
+                Scroll to bottom to add new category if not found{"\n"}
+                {hasVariants
+                  ? "• Each variant will have its own barcode"
+                  : "• Barcode is optional but recommended"}
               </Text>
             </View>
           </View>
@@ -3203,7 +3446,9 @@ export default function AddProductScreen({ route, navigation }) {
             <>
               <Ionicons name="checkmark" size={20} color="#fff" />
               <Text style={styles.submitButtonText}>
-                {hasVariants ? `Add Product (${variants.length} variants)` : "Create Product"}
+                {hasVariants
+                  ? `Add Product (${variants.length} variants)`
+                  : "Create Product"}
               </Text>
             </>
           )}
@@ -4201,7 +4446,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
     marginTop: 4,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   defaultBadgeSmallText: {
     fontSize: 10,
@@ -4238,68 +4483,68 @@ const styles = StyleSheet.create({
   },
   // Enhanced Category Selection Styles
   categoryItemContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     minHeight: 56,
   },
-  
+
   categoryMainArea: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
     paddingRight: 12,
   },
-  
+
   highlightedCategory: {
-    backgroundColor: '#FFF7F0',
+    backgroundColor: "#FFF7F0",
     borderRadius: 8,
   },
-  
+
   categoryLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
-  
+
   tickButton: {
     padding: 12,
     marginLeft: 8,
   },
-  
+
   tickContainer: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
-  
+
   tickSelected: {
-    backgroundColor: '#FF6B00',
+    backgroundColor: "#FF6B00",
   },
-  
+
   tickUnselected: {
     borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: 'transparent',
+    borderColor: "#E5E7EB",
+    backgroundColor: "transparent",
   },
-  
+
   selectedCategoryName: {
-    color: '#FF6B00',
-    fontWeight: '600',
+    color: "#FF6B00",
+    fontWeight: "600",
   },
-  
+
   expandButton: {
     marginRight: 8,
   },
-  
+
   childIndicator: {
     width: 36,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  
+
   categoryIcon: {
     width: 36,
     height: 36,
@@ -4308,23 +4553,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 12,
   },
-  
+
   categoryInfo: {
     flex: 1,
   },
-  
+
   categoryName: {
     fontSize: 16,
     color: "#1F2937",
     fontWeight: "500",
   },
-  
+
   categoryDescription: {
     fontSize: 12,
     color: "#9CA3AF",
     marginTop: 2,
   },
-  
+
   // Add Category Button Styles
   addCategoryButton: {
     paddingVertical: 16,
@@ -4333,19 +4578,19 @@ const styles = StyleSheet.create({
     borderBottomColor: "#f3f4f6",
     backgroundColor: "#f9fafb",
   },
-  
+
   addCategoryButtonContent: {
     flexDirection: "row",
     alignItems: "center",
   },
-  
+
   addCategoryButtonText: {
     fontSize: 16,
     color: "#3B82F6",
     fontWeight: "500",
     marginLeft: 8,
   },
-  
+
   // Create Category Input Styles
   createCategoryInput: {
     paddingVertical: 12,
@@ -4354,12 +4599,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
   },
-  
+
   createCategoryInputRow: {
     flexDirection: "row",
     alignItems: "center",
   },
-  
+
   createCategoryTextInput: {
     flex: 1,
     backgroundColor: "#fff",
@@ -4371,7 +4616,7 @@ const styles = StyleSheet.create({
     borderColor: "#e5e7eb",
     marginRight: 8,
   },
-  
+
   createCategoryConfirmButton: {
     padding: 12,
     backgroundColor: "#f0fdf4",
@@ -4379,7 +4624,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#bbf7d0",
   },
-  
+
   createCategoryCancelButton: {
     padding: 12,
     backgroundColor: "#fef2f2",
@@ -4388,22 +4633,22 @@ const styles = StyleSheet.create({
     borderColor: "#fecaca",
     marginLeft: 8,
   },
-  
+
   categoryTreeScroll: {
     maxHeight: 400,
   },
-  
+
   toggleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 12,
   },
-  
+
   toggleItem: {
     flexDirection: "row",
     alignItems: "center",
   },
-  
+
   previewCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -4417,19 +4662,19 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  
+
   previewTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: "#1F2937",
     marginBottom: 16,
   },
-  
+
   previewContent: {
     flexDirection: "row",
     alignItems: "center",
   },
-  
+
   previewIcon: {
     width: 64,
     height: 64,
@@ -4439,30 +4684,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 16,
   },
-  
+
   previewInfo: {
     flex: 1,
   },
-  
+
   previewName: {
     fontSize: 18,
     fontWeight: "600",
     color: "#1F2937",
     marginBottom: 4,
   },
-  
+
   previewDescription: {
     fontSize: 14,
     color: "#6B7280",
   },
-  
+
   previewDetails: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
     marginTop: 4,
   },
-  
+
   previewDetail: {
     fontSize: 12,
     color: "#9CA3AF",
@@ -4471,7 +4716,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 4,
   },
-  
+
   helpCard: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -4484,32 +4729,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#BFDBFE",
   },
-  
+
   helpContent: {
     flex: 1,
     marginLeft: 12,
   },
-  
+
   helpTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: "#3B82F6",
     marginBottom: 8,
   },
-  
+
   helpText: {
     fontSize: 14,
     color: "#6B7280",
     lineHeight: 20,
   },
-  
+
   // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "flex-end",
   },
-  
+
   modalContent: {
     backgroundColor: "#fff",
     borderTopLeftRadius: 24,
@@ -4517,7 +4762,7 @@ const styles = StyleSheet.create({
     maxHeight: "80%",
     paddingBottom: Platform.OS === "ios" ? 34 : 0,
   },
-  
+
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -4526,49 +4771,49 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
   },
-  
+
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#1F2937",
   },
-  
+
   modalCloseButton: {
     padding: 4,
   },
-  
+
   loadingContainer: {
     padding: 32,
     alignItems: "center",
     justifyContent: "center",
   },
-  
+
   loadingText: {
     fontSize: 14,
     color: "#6B7280",
     marginTop: 12,
   },
-  
+
   emptyState: {
     padding: 32,
     alignItems: "center",
     justifyContent: "center",
   },
-  
+
   emptyStateText: {
     fontSize: 16,
     fontWeight: "600",
     color: "#6B7280",
     marginTop: 16,
   },
-  
+
   emptyStateSubtext: {
     fontSize: 14,
     color: "#9CA3AF",
     textAlign: "center",
     marginTop: 4,
   },
-  
+
   refreshButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -4579,19 +4824,19 @@ const styles = StyleSheet.create({
     marginTop: 16,
     gap: 4,
   },
-  
+
   refreshButtonText: {
     fontSize: 14,
     color: "#3B82F6",
     fontWeight: "500",
   },
-  
+
   presetAttributeItem: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
   },
-  
+
   presetAttributeIcon: {
     width: 40,
     height: 40,
@@ -4601,81 +4846,81 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 12,
   },
-  
+
   presetAttributeInfo: {
     flex: 1,
   },
-  
+
   presetAttributeName: {
     fontSize: 16,
     fontWeight: "600",
     color: "#1F2937",
   },
-  
+
   presetAttributeValues: {
     fontSize: 14,
     color: "#9CA3AF",
     marginTop: 2,
   },
-  
+
   unitItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     padding: 16,
   },
-  
+
   selectedUnitItem: {
     backgroundColor: "#FFF7F0",
   },
-  
+
   unitName: {
     fontSize: 16,
     color: "#1F2937",
   },
-  
+
   selectedUnitName: {
     color: "#FF6B00",
     fontWeight: "600",
   },
-  
+
   taxItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     padding: 16,
   },
-  
+
   selectedTaxItem: {
     backgroundColor: "#FFF7F0",
   },
-  
+
   taxInfo: {
     flex: 1,
   },
-  
+
   taxName: {
     fontSize: 16,
     color: "#1F2937",
   },
-  
+
   selectedTaxName: {
     color: "#FF6B00",
     fontWeight: "600",
   },
-  
+
   taxDescription: {
     fontSize: 14,
     color: "#9CA3AF",
     marginTop: 2,
   },
-  
+
   separator: {
     height: 1,
     backgroundColor: "#e5e7eb",
     marginHorizontal: 16,
   },
-  
+
   // Action Bar Styles
   actionBar: {
     flexDirection: "row",
@@ -4689,7 +4934,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
-  
+
   actionButton: {
     flex: 1,
     flexDirection: "row",
@@ -4699,30 +4944,30 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginHorizontal: 8,
   },
-  
+
   cancelButton: {
     backgroundColor: "#f3f4f6",
     borderWidth: 1,
     borderColor: "#e5e7eb",
   },
-  
+
   cancelButtonText: {
     fontSize: 16,
     fontWeight: "600",
     color: "#6B7280",
   },
-  
+
   submitButton: {
     backgroundColor: "#FF6B00",
   },
-  
+
   submitButtonText: {
     fontSize: 16,
     fontWeight: "600",
     color: "#fff",
     marginLeft: 8,
   },
-  
+
   buttonDisabled: {
     backgroundColor: "#FFA94D",
   },
