@@ -33,7 +33,8 @@ const normalizeIds = (data) => {
 
   const normalized = { ...data };
   // Convert common ID fields to strings
-  if (normalized.id !== undefined) normalized.id = ensureStringId(normalized.id);
+  if (normalized.id !== undefined)
+    normalized.id = ensureStringId(normalized.id);
   if (normalized.server_id !== undefined)
     normalized.server_id = ensureStringId(normalized.server_id);
   if (normalized.user_id !== undefined)
@@ -736,15 +737,24 @@ export const migrateDatabase = async () => {
     const db = await openDatabase();
 
     // Add onboarding columns to user_profiles if missing
-    const userProfileColumns = await db.getAllAsync("PRAGMA table_info(user_profiles)");
-    const profileColNames = userProfileColumns.map(col => col.name);
-    const newProfileFields = ['has_changed_temp_password', 'is_first_login_complete', 'onboarding_completed_at'];
+    const userProfileColumns = await db.getAllAsync(
+      "PRAGMA table_info(user_profiles)",
+    );
+    const profileColNames = userProfileColumns.map((col) => col.name);
+    const newProfileFields = [
+      "has_changed_temp_password",
+      "is_first_login_complete",
+      "onboarding_completed_at",
+    ];
     for (const field of newProfileFields) {
       if (!profileColNames.includes(field)) {
-        let columnDef = '';
-        if (field === 'has_changed_temp_password') columnDef = 'has_changed_temp_password INTEGER DEFAULT 0';
-        if (field === 'is_first_login_complete') columnDef = 'is_first_login_complete INTEGER DEFAULT 0';
-        if (field === 'onboarding_completed_at') columnDef = 'onboarding_completed_at TEXT';
+        let columnDef = "";
+        if (field === "has_changed_temp_password")
+          columnDef = "has_changed_temp_password INTEGER DEFAULT 0";
+        if (field === "is_first_login_complete")
+          columnDef = "is_first_login_complete INTEGER DEFAULT 0";
+        if (field === "onboarding_completed_at")
+          columnDef = "onboarding_completed_at TEXT";
         await db.execAsync(`ALTER TABLE user_profiles ADD COLUMN ${columnDef}`);
         console.log(`✅ Added ${field} to user_profiles`);
       }
@@ -772,62 +782,74 @@ export const migrateDatabase = async () => {
 
     // Check if products table has new columns
     const productsSchema = await db.getAllAsync("PRAGMA table_info(products)");
-    const productColumns = productsSchema.map(col => col.name);
-    
+    const productColumns = productsSchema.map((col) => col.name);
+
     const requiredProductColumns = [
-      'has_variants', 'variant_type', 'base_barcode', 'base_sku',
-      'base_cost_price', 'base_selling_price', 'base_wholesale_price',
-      'tax_id', 'tax_inclusive', 'is_trackable', 'created_by'
+      "has_variants",
+      "variant_type",
+      "base_barcode",
+      "base_sku",
+      "base_cost_price",
+      "base_selling_price",
+      "base_wholesale_price",
+      "tax_id",
+      "tax_inclusive",
+      "is_trackable",
+      "created_by",
     ];
 
     for (const column of requiredProductColumns) {
       if (!productColumns.includes(column)) {
-        let columnDefinition = '';
-        switch(column) {
-          case 'has_variants':
-            columnDefinition = 'has_variants INTEGER DEFAULT 0';
+        let columnDefinition = "";
+        switch (column) {
+          case "has_variants":
+            columnDefinition = "has_variants INTEGER DEFAULT 0";
             break;
-          case 'variant_type':
+          case "variant_type":
             columnDefinition = 'variant_type TEXT DEFAULT "none"';
             break;
-          case 'base_barcode':
-            columnDefinition = 'base_barcode TEXT UNIQUE';
+          case "base_barcode":
+            columnDefinition = "base_barcode TEXT UNIQUE";
             break;
-          case 'base_sku':
-            columnDefinition = 'base_sku TEXT UNIQUE';
+          case "base_sku":
+            columnDefinition = "base_sku TEXT UNIQUE";
             break;
-          case 'base_cost_price':
-            columnDefinition = 'base_cost_price REAL';
+          case "base_cost_price":
+            columnDefinition = "base_cost_price REAL";
             break;
-          case 'base_selling_price':
-            columnDefinition = 'base_selling_price REAL';
+          case "base_selling_price":
+            columnDefinition = "base_selling_price REAL";
             break;
-          case 'base_wholesale_price':
-            columnDefinition = 'base_wholesale_price REAL';
+          case "base_wholesale_price":
+            columnDefinition = "base_wholesale_price REAL";
             break;
-          case 'tax_id':
-            columnDefinition = 'tax_id TEXT';
+          case "tax_id":
+            columnDefinition = "tax_id TEXT";
             break;
-          case 'tax_inclusive':
-            columnDefinition = 'tax_inclusive INTEGER DEFAULT 1';
+          case "tax_inclusive":
+            columnDefinition = "tax_inclusive INTEGER DEFAULT 1";
             break;
-          case 'is_trackable':
-            columnDefinition = 'is_trackable INTEGER DEFAULT 1';
+          case "is_trackable":
+            columnDefinition = "is_trackable INTEGER DEFAULT 1";
             break;
-          case 'created_by':
-            columnDefinition = 'created_by TEXT';
+          case "created_by":
+            columnDefinition = "created_by TEXT";
             break;
         }
-        
+
         if (columnDefinition) {
-          await db.execAsync(`ALTER TABLE products ADD COLUMN ${columnDefinition}`);
+          await db.execAsync(
+            `ALTER TABLE products ADD COLUMN ${columnDefinition}`,
+          );
           console.log(`✅ Added ${column} column to products table`);
         }
       }
     }
 
     // Check if product_attributes table exists
-    const attributesExists = await db.getAllAsync("PRAGMA table_info(product_attributes)");
+    const attributesExists = await db.getAllAsync(
+      "PRAGMA table_info(product_attributes)",
+    );
     if (!attributesExists || attributesExists.length === 0) {
       await db.execAsync(`
         CREATE TABLE product_attributes (
@@ -850,7 +872,9 @@ export const migrateDatabase = async () => {
     }
 
     // Check if product_attribute_values table exists
-    const attributeValuesExists = await db.getAllAsync("PRAGMA table_info(product_attribute_values)");
+    const attributeValuesExists = await db.getAllAsync(
+      "PRAGMA table_info(product_attribute_values)",
+    );
     if (!attributeValuesExists || attributeValuesExists.length === 0) {
       await db.execAsync(`
         CREATE TABLE product_attribute_values (
@@ -872,7 +896,9 @@ export const migrateDatabase = async () => {
     }
 
     // Check if product_variants table exists
-    const variantsExists = await db.getAllAsync("PRAGMA table_info(product_variants)");
+    const variantsExists = await db.getAllAsync(
+      "PRAGMA table_info(product_variants)",
+    );
     if (!variantsExists || variantsExists.length === 0) {
       await db.execAsync(`
         CREATE TABLE product_variants (
@@ -903,7 +929,9 @@ export const migrateDatabase = async () => {
     }
 
     // Check if product_variant_attributes table exists
-    const variantAttributesExists = await db.getAllAsync("PRAGMA table_info(product_variant_attributes)");
+    const variantAttributesExists = await db.getAllAsync(
+      "PRAGMA table_info(product_variant_attributes)",
+    );
     if (!variantAttributesExists || variantAttributesExists.length === 0) {
       await db.execAsync(`
         CREATE TABLE product_variant_attributes (
@@ -926,7 +954,9 @@ export const migrateDatabase = async () => {
     }
 
     // Check if product_images table exists
-    const productImagesExists = await db.getAllAsync("PRAGMA table_info(product_images)");
+    const productImagesExists = await db.getAllAsync(
+      "PRAGMA table_info(product_images)",
+    );
     if (!productImagesExists || productImagesExists.length === 0) {
       await db.execAsync(`
         CREATE TABLE product_images (
@@ -955,36 +985,51 @@ export const migrateDatabase = async () => {
     }
 
     // Check if categories table has business_server_id column
-    const categorySchema = await db.getAllAsync("PRAGMA table_info(categories)");
-    const hasBusinessServerId = categorySchema.some(col => col.name === 'business_server_id');
-    
+    const categorySchema = await db.getAllAsync(
+      "PRAGMA table_info(categories)",
+    );
+    const hasBusinessServerId = categorySchema.some(
+      (col) => col.name === "business_server_id",
+    );
+
     if (!hasBusinessServerId) {
-      await db.execAsync("ALTER TABLE categories ADD COLUMN business_server_id TEXT");
+      await db.execAsync(
+        "ALTER TABLE categories ADD COLUMN business_server_id TEXT",
+      );
       console.log("✅ Added business_server_id column to categories table");
     }
 
     // Check if products table has business_server_id column
-    const hasProductsBusinessServerId = productColumns.includes('business_server_id');
+    const hasProductsBusinessServerId =
+      productColumns.includes("business_server_id");
     if (!hasProductsBusinessServerId) {
-      await db.execAsync("ALTER TABLE products ADD COLUMN business_server_id TEXT");
+      await db.execAsync(
+        "ALTER TABLE products ADD COLUMN business_server_id TEXT",
+      );
       console.log("✅ Added business_server_id column to products table");
     }
 
     // --- Add new columns to inventory table ---
-    const inventoryColumns = await db.getAllAsync("PRAGMA table_info(inventory)");
-    const inventoryColNames = inventoryColumns.map(col => col.name);
+    const inventoryColumns = await db.getAllAsync(
+      "PRAGMA table_info(inventory)",
+    );
+    const inventoryColNames = inventoryColumns.map((col) => col.name);
 
-    if (!inventoryColNames.includes('last_movement')) {
+    if (!inventoryColNames.includes("last_movement")) {
       await db.execAsync("ALTER TABLE inventory ADD COLUMN last_movement TEXT");
       console.log("✅ Added last_movement column to inventory table");
     }
-    if (!inventoryColNames.includes('is_locked')) {
-      await db.execAsync("ALTER TABLE inventory ADD COLUMN is_locked INTEGER DEFAULT 0");
+    if (!inventoryColNames.includes("is_locked")) {
+      await db.execAsync(
+        "ALTER TABLE inventory ADD COLUMN is_locked INTEGER DEFAULT 0",
+      );
       console.log("✅ Added is_locked column to inventory table");
     }
 
     // --- Create stock_movements table if not exists ---
-    const stockMovementsExists = await db.getAllAsync("PRAGMA table_info(stock_movements)");
+    const stockMovementsExists = await db.getAllAsync(
+      "PRAGMA table_info(stock_movements)",
+    );
     if (!stockMovementsExists || stockMovementsExists.length === 0) {
       await db.execAsync(`
         CREATE TABLE stock_movements (
@@ -1034,7 +1079,9 @@ export const initDatabase = async () => {
     await initializeDatabase();
     await migrateDatabase();
     await fixRoleUUIDs();
-    console.log("📊 Database initialized, migrated, and UUIDs fixed successfully");
+    console.log(
+      "📊 Database initialized, migrated, and UUIDs fixed successfully",
+    );
     return true;
   } catch (error) {
     console.error("Failed to initialize database:", error);
@@ -1069,14 +1116,14 @@ const BaseService = {
       if (uniqueFields.length > 0) {
         existingRecord = await db.getFirstAsync(
           `SELECT ${idField} FROM ${tableName} ${whereClause}`,
-          whereParams
+          whereParams,
         );
       }
 
       if (existingRecord) {
         // Update existing record
         const fields = Object.keys(normalizedData).filter(
-          (field) => field !== idField
+          (field) => field !== idField,
         );
         const values = fields.map((field) => normalizedData[field]);
 
@@ -1084,7 +1131,7 @@ const BaseService = {
 
         await db.runAsync(
           `UPDATE ${tableName} SET ${setClause}, updated_at = ?, is_dirty = 1 WHERE ${idField} = ?`,
-          [...values, now, existingRecord[idField]]
+          [...values, now, existingRecord[idField]],
         );
 
         return { id: existingRecord[idField], action: "updated" };
@@ -1095,9 +1142,9 @@ const BaseService = {
 
         await db.runAsync(
           `INSERT INTO ${tableName} (${fields.join(
-            ", "
+            ", ",
           )}) VALUES (${placeholders})`,
-          fields.map((field) => normalizedData[field])
+          fields.map((field) => normalizedData[field]),
         );
 
         return { id: recordId, action: "created" };
@@ -1114,7 +1161,7 @@ const BaseService = {
       const db = await openDatabase();
       const record = await db.getFirstAsync(
         `SELECT * FROM ${tableName} WHERE ${idField} = ?`,
-        [ensureStringId(id)]
+        [ensureStringId(id)],
       );
       return record;
     } catch (error) {
@@ -1128,7 +1175,7 @@ const BaseService = {
     tableName,
     where = "",
     params = [],
-    orderBy = "created_at DESC"
+    orderBy = "created_at DESC",
   ) => {
     try {
       const db = await openDatabase();
@@ -1137,7 +1184,7 @@ const BaseService = {
 
       return await db.getAllAsync(
         `SELECT * FROM ${tableName} ${whereClause} ${orderClause}`,
-        params
+        params,
       );
     } catch (error) {
       console.error(`Error getting records from ${tableName}:`, error);
@@ -1159,7 +1206,7 @@ const BaseService = {
 
       await db.runAsync(
         `UPDATE ${tableName} SET ${setClause}, updated_at = ?, is_dirty = 1 WHERE ${idField} = ?`,
-        [...values, now, idStr]
+        [...values, now, idStr],
       );
 
       return true;
@@ -1177,7 +1224,7 @@ const BaseService = {
 
       await db.runAsync(
         `UPDATE ${tableName} SET is_active = 0, updated_at = ?, is_dirty = 1 WHERE ${idField} = ?`,
-        [now, ensureStringId(id)]
+        [now, ensureStringId(id)],
       );
 
       return true;
@@ -1192,7 +1239,7 @@ const BaseService = {
     try {
       const db = await openDatabase();
       return await db.getAllAsync(
-        `SELECT * FROM ${tableName} WHERE is_dirty = 1 OR sync_status = "pending"`
+        `SELECT * FROM ${tableName} WHERE is_dirty = 1 OR sync_status = "pending"`,
       );
     } catch (error) {
       console.error(`Error getting pending sync from ${tableName}:`, error);
@@ -1210,7 +1257,7 @@ const BaseService = {
           ensureStringId(serverId),
           new Date().toISOString(),
           ensureStringId(localId),
-        ]
+        ],
       );
       return true;
     } catch (error) {
@@ -1240,21 +1287,21 @@ export const UserService = {
       if (normalizedData.server_id) {
         existingUser = await db.getFirstAsync(
           "SELECT id FROM users WHERE server_id = ?",
-          [normalizedData.server_id]
+          [normalizedData.server_id],
         );
       }
 
       if (!existingUser && normalizedData.email) {
         existingUser = await db.getFirstAsync(
           "SELECT id FROM users WHERE email = ?",
-          [normalizedData.email]
+          [normalizedData.email],
         );
       }
 
       if (!existingUser && normalizedData.username) {
         existingUser = await db.getFirstAsync(
           "SELECT id FROM users WHERE username = ?",
-          [normalizedData.username]
+          [normalizedData.username],
         );
       }
 
@@ -1280,7 +1327,9 @@ export const UserService = {
             is_dirty = 0
           WHERE id = ?`,
           [
-            normalizedData.server_id || normalizedData.id || existingUser.server_id,
+            normalizedData.server_id ||
+              normalizedData.id ||
+              existingUser.server_id,
             normalizedData.username || existingUser.username,
             normalizedData.email || existingUser.email || "",
             normalizedData.first_name || existingUser.first_name || "",
@@ -1288,14 +1337,18 @@ export const UserService = {
             normalizedData.user_type || existingUser.user_type || "employee",
             normalizedData.phone_number || existingUser.phone_number || "",
             normalizedData.is_verified ? 1 : existingUser.is_verified || 0,
-            normalizedData.is_active !== false ? 1 : existingUser.is_active || 1,
+            normalizedData.is_active !== false
+              ? 1
+              : existingUser.is_active || 1,
             normalizedData.last_login || existingUser.last_login || now,
             normalizedData.date_joined || existingUser.date_joined || now,
-            normalizedData.profile_picture || existingUser.profile_picture || null,
+            normalizedData.profile_picture ||
+              existingUser.profile_picture ||
+              null,
             now,
             now,
             existingUser.id,
-          ]
+          ],
         );
 
         // Update or create profile with ALL profile fields (including onboarding flags)
@@ -1344,7 +1397,7 @@ export const UserService = {
             now,
             "synced",
             0,
-          ]
+          ],
         );
 
         // Create profile if there's profile data (including onboarding flags)
@@ -1384,7 +1437,7 @@ export const UserService = {
          FROM users u
          LEFT JOIN user_profiles up ON u.id = up.user_id
          WHERE u.id = ?`,
-        [userIdStr]
+        [userIdStr],
       );
       return user;
     } catch (error) {
@@ -1408,7 +1461,7 @@ export const UserService = {
            FROM users u
            LEFT JOIN user_profiles up ON u.id = up.user_id
            WHERE u.id = ?`,
-          [lastUserId]
+          [lastUserId],
         );
         if (user && user.is_active) {
           return user;
@@ -1423,7 +1476,7 @@ export const UserService = {
          LEFT JOIN user_profiles up ON u.id = up.user_id
          WHERE u.is_active = 1
          ORDER BY u.last_login DESC
-         LIMIT 1`
+         LIMIT 1`,
       );
 
       if (user) {
@@ -1455,7 +1508,7 @@ export const UserService = {
         "is_verified",
         "is_active",
         "last_login",
-        "profile_picture"
+        "profile_picture",
       ];
       const profileFields = [
         "date_of_birth",
@@ -1467,7 +1520,7 @@ export const UserService = {
         "pin_hash",
         "has_changed_temp_password",
         "is_first_login_complete",
-        "onboarding_completed_at"
+        "onboarding_completed_at",
       ];
 
       const userUpdates = {};
@@ -1490,7 +1543,7 @@ export const UserService = {
 
         await db.runAsync(
           `UPDATE users SET ${setClause}, updated_at = ?, sync_status = 'pending', is_dirty = 1 WHERE id = ?`,
-          [...values, now, userIdStr]
+          [...values, now, userIdStr],
         );
       }
 
@@ -1516,7 +1569,7 @@ export const UserService = {
       const db = await openDatabase();
       await db.runAsync(
         "UPDATE users SET last_login = ?, updated_at = ? WHERE id = ?",
-        [new Date().toISOString(), new Date().toISOString(), userIdStr]
+        [new Date().toISOString(), new Date().toISOString(), userIdStr],
       );
 
       console.log("✅ Current user set:", userIdStr);
@@ -1532,7 +1585,7 @@ export const UserService = {
     try {
       const db = await openDatabase();
       return await db.getAllAsync(
-        'SELECT * FROM users WHERE is_dirty = 1 OR sync_status = "pending"'
+        'SELECT * FROM users WHERE is_dirty = 1 OR sync_status = "pending"',
       );
     } catch (error) {
       console.error("Error getting pending sync users:", error);
@@ -1549,7 +1602,7 @@ export const UserService = {
 
       await db.runAsync(
         'UPDATE users SET server_id = ?, synced_at = ?, is_dirty = 0, sync_status = "synced" WHERE id = ?',
-        [serverIdStr, new Date().toISOString(), userIdStr]
+        [serverIdStr, new Date().toISOString(), userIdStr],
       );
       return true;
     } catch (error) {
@@ -1577,7 +1630,7 @@ export const UserService = {
     try {
       const db = await openDatabase();
       return await db.getAllAsync(
-        "SELECT * FROM users WHERE is_active = 1 ORDER BY username"
+        "SELECT * FROM users WHERE is_active = 1 ORDER BY username",
       );
     } catch (error) {
       console.error("Error getting all users:", error);
@@ -1599,7 +1652,7 @@ export const UserProfileService = {
 
       const existingProfile = await db.getFirstAsync(
         "SELECT id FROM user_profiles WHERE user_id = ?",
-        [userIdStr]
+        [userIdStr],
       );
 
       if (existingProfile) {
@@ -1629,14 +1682,24 @@ export const UserProfileService = {
             normalizedData.profile_picture,
             normalizedData.profile_picture,
             normalizedData.local_profile_picture,
-            normalizedData.preferences ? JSON.stringify(normalizedData.preferences) : "{}",
-            normalizedData.has_changed_temp_password !== undefined ? (normalizedData.has_changed_temp_password ? 1 : 0) : null,
-            normalizedData.is_first_login_complete !== undefined ? (normalizedData.is_first_login_complete ? 1 : 0) : null,
+            normalizedData.preferences
+              ? JSON.stringify(normalizedData.preferences)
+              : "{}",
+            normalizedData.has_changed_temp_password !== undefined
+              ? normalizedData.has_changed_temp_password
+                ? 1
+                : 0
+              : null,
+            normalizedData.is_first_login_complete !== undefined
+              ? normalizedData.is_first_login_complete
+                ? 1
+                : 0
+              : null,
             normalizedData.onboarding_completed_at || null,
             now,
             now,
             userIdStr,
-          ]
+          ],
         );
       } else {
         // Insert new profile
@@ -1657,7 +1720,9 @@ export const UserProfileService = {
             normalizedData.profile_picture || null,
             normalizedData.profile_picture || null,
             normalizedData.local_profile_picture || null,
-            normalizedData.preferences ? JSON.stringify(normalizedData.preferences) : "{}",
+            normalizedData.preferences
+              ? JSON.stringify(normalizedData.preferences)
+              : "{}",
             normalizedData.has_changed_temp_password ? 1 : 0,
             normalizedData.is_first_login_complete ? 1 : 0,
             normalizedData.onboarding_completed_at || null,
@@ -1665,7 +1730,7 @@ export const UserProfileService = {
             now,
             now,
             0,
-          ]
+          ],
         );
       }
 
@@ -1695,7 +1760,7 @@ export const UserProfileService = {
 
       await db.runAsync(
         `UPDATE user_profiles SET ${setClause}, updated_at = ?, is_dirty = 1 WHERE user_id = ?`,
-        [...values, now, userIdStr]
+        [...values, now, userIdStr],
       );
 
       return true;
@@ -1712,7 +1777,7 @@ export const UserProfileService = {
       const userIdStr = ensureStringId(userId);
       return await db.getFirstAsync(
         "SELECT * FROM user_profiles WHERE user_id = ?",
-        [userIdStr]
+        [userIdStr],
       );
     } catch (error) {
       console.error("Error getting profile:", error);
@@ -1725,7 +1790,7 @@ export const UserProfileService = {
     try {
       const db = await openDatabase();
       return await db.getAllAsync(
-        "SELECT * FROM user_profiles WHERE is_dirty = 1"
+        "SELECT * FROM user_profiles WHERE is_dirty = 1",
       );
     } catch (error) {
       console.error("Error getting pending sync profiles:", error);
@@ -1742,7 +1807,7 @@ export const UserProfileService = {
 
       await db.runAsync(
         "UPDATE user_profiles SET server_id = ?, synced_at = ?, is_dirty = 0 WHERE id = ?",
-        [serverIdStr, new Date().toISOString(), profileIdStr]
+        [serverIdStr, new Date().toISOString(), profileIdStr],
       );
       return true;
     } catch (error) {
@@ -1770,7 +1835,7 @@ export const BusinessService = {
       // Check if business already exists
       const existingBusiness = await db.getFirstAsync(
         "SELECT id FROM businesses WHERE owner_id = ? AND name = ?",
-        [ensureStringId(normalizedData.owner_id), normalizedData.name]
+        [ensureStringId(normalizedData.owner_id), normalizedData.name],
       );
 
       if (existingBusiness) {
@@ -1806,7 +1871,7 @@ export const BusinessService = {
           syncStatus,
           isDirty,
           1,
-        ]
+        ],
       );
 
       // Set as current business for this owner
@@ -1815,7 +1880,7 @@ export const BusinessService = {
       console.log(
         `✅ Business ${
           syncStatus === "synced" ? "saved (synced)" : "saved (pending sync)"
-        }: ${businessId}`
+        }: ${businessId}`,
       );
       return {
         success: true,
@@ -1834,7 +1899,7 @@ export const BusinessService = {
       const db = await openDatabase();
       const business = await db.getFirstAsync(
         "SELECT b.*, u.username as owner_username FROM businesses b LEFT JOIN users u ON b.owner_id = u.id WHERE b.id = ?",
-        [ensureStringId(businessId)]
+        [ensureStringId(businessId)],
       );
       return business;
     } catch (error) {
@@ -1849,7 +1914,7 @@ export const BusinessService = {
       const db = await openDatabase();
       const business = await db.getFirstAsync(
         "SELECT b.*, u.username as owner_username FROM businesses b LEFT JOIN users u ON b.owner_id = u.id WHERE b.server_id = ?",
-        [ensureStringId(serverId)]
+        [ensureStringId(serverId)],
       );
       return business;
     } catch (error) {
@@ -1864,7 +1929,7 @@ export const BusinessService = {
       const db = await openDatabase();
       const businesses = await db.getAllAsync(
         "SELECT b.*, u.username as owner_username FROM businesses b LEFT JOIN users u ON b.owner_id = u.id WHERE b.owner_id = ? AND b.is_active = 1 ORDER BY b.created_at DESC",
-        [ensureStringId(ownerId)]
+        [ensureStringId(ownerId)],
       );
 
       // Calculate shop and employee counts for each business
@@ -1876,12 +1941,12 @@ export const BusinessService = {
         // Employee count - FIXED: Use simple count without problematic joins
         const employeeCount = await db.getFirstAsync(
           "SELECT COUNT(*) as count FROM employees WHERE business_id = ? AND is_active = 1",
-          [business.id]
+          [business.id],
         );
         business.employee_count = employeeCount?.count || 0;
 
         console.log(
-          `📊 Business ${business.name}: ${shops.length} shops, ${business.employee_count} employees`
+          `📊 Business ${business.name}: ${shops.length} shops, ${business.employee_count} employees`,
         );
       }
 
@@ -1899,7 +1964,7 @@ export const BusinessService = {
       // First try to get user's current business
       let business = await db.getFirstAsync(
         "SELECT b.* FROM businesses b WHERE b.owner_id = ? AND b.is_current = 1 AND b.is_active = 1 LIMIT 1",
-        [ensureStringId(userId)]
+        [ensureStringId(userId)],
       );
 
       // If user doesn't own a business, check if they're an employee in one
@@ -1909,14 +1974,14 @@ export const BusinessService = {
            INNER JOIN employees e ON b.id = e.business_id 
            WHERE e.user_id = ? AND b.is_active = 1 AND e.is_active = 1 
            LIMIT 1`,
-          [ensureStringId(userId)]
+          [ensureStringId(userId)],
         );
       }
 
       if (business) {
         await AsyncStorage.setItem(
           "@vendex_current_business_id",
-          String(business.id)
+          String(business.id),
         );
       }
 
@@ -1942,13 +2007,13 @@ export const BusinessService = {
       // Reset all businesses for this owner to not current
       await db.runAsync(
         "UPDATE businesses SET is_current = 0 WHERE owner_id = ?",
-        [ensureStringId(business.owner_id)]
+        [ensureStringId(business.owner_id)],
       );
 
       // Set selected business as current
       await db.runAsync(
         "UPDATE businesses SET is_current = 1, updated_at = ? WHERE id = ?",
-        [new Date().toISOString(), businessIdStr]
+        [new Date().toISOString(), businessIdStr],
       );
 
       // Store in AsyncStorage for quick access
@@ -1969,9 +2034,8 @@ export const BusinessService = {
       const businessIdStr = ensureStringId(businessId);
 
       // Get existing business
-      const existingBusiness = await BusinessService.getBusinessById(
-        businessIdStr
-      );
+      const existingBusiness =
+        await BusinessService.getBusinessById(businessIdStr);
       if (!existingBusiness) {
         throw new Error("Business not found");
       }
@@ -1983,7 +2047,7 @@ export const BusinessService = {
 
       await db.runAsync(
         `UPDATE businesses SET ${setClause}, updated_at = ?, sync_status = 'pending', is_dirty = 1 WHERE id = ?`,
-        [...values, now, businessIdStr]
+        [...values, now, businessIdStr],
       );
 
       return {
@@ -2006,7 +2070,7 @@ export const BusinessService = {
       // Soft delete
       await db.runAsync(
         'UPDATE businesses SET is_active = 0, updated_at = ?, sync_status = "pending", is_dirty = 1 WHERE id = ?',
-        [now, businessIdStr]
+        [now, businessIdStr],
       );
 
       return { success: true };
@@ -2021,7 +2085,7 @@ export const BusinessService = {
     try {
       const db = await openDatabase();
       return await db.getAllAsync(
-        'SELECT * FROM businesses WHERE is_dirty = 1 OR sync_status = "pending"'
+        'SELECT * FROM businesses WHERE is_dirty = 1 OR sync_status = "pending"',
       );
     } catch (error) {
       console.error("Error getting pending sync businesses:", error);
@@ -2039,7 +2103,7 @@ export const BusinessService = {
           ensureStringId(serverId),
           new Date().toISOString(),
           ensureStringId(localId),
-        ]
+        ],
       );
       return true;
     } catch (error) {
@@ -2056,7 +2120,7 @@ export const BusinessService = {
       // Get businesses where user is owner
       const ownedBusinesses = await db.getAllAsync(
         "SELECT b.* FROM businesses b WHERE b.owner_id = ? AND b.is_active = 1",
-        [ensureStringId(userId)]
+        [ensureStringId(userId)],
       );
 
       // Get businesses where user is employee
@@ -2064,14 +2128,14 @@ export const BusinessService = {
         `SELECT DISTINCT b.* FROM businesses b 
          INNER JOIN employees e ON b.id = e.business_id 
          WHERE e.user_id = ? AND e.is_active = 1 AND b.is_active = 1`,
-        [ensureStringId(userId)]
+        [ensureStringId(userId)],
       );
 
       // Combine and remove duplicates
       const allBusinesses = [...ownedBusinesses, ...employeeBusinesses];
       const uniqueBusinesses = allBusinesses.filter(
         (business, index, self) =>
-          index === self.findIndex((b) => b.id === business.id)
+          index === self.findIndex((b) => b.id === business.id),
       );
 
       return uniqueBusinesses;
@@ -2094,7 +2158,7 @@ export const ShopService = {
 
       // Get business to get server_id if available
       const business = await BusinessService.getBusinessById(
-        normalizedData.business_id
+        normalizedData.business_id,
       );
       const businessServerId = business?.server_id || null;
 
@@ -2107,7 +2171,7 @@ export const ShopService = {
       // Check if shop already exists in this business
       const existingShop = await db.getFirstAsync(
         "SELECT id FROM shops WHERE business_id = ? AND name = ?",
-        [ensureStringId(normalizedData.business_id), normalizedData.name]
+        [ensureStringId(normalizedData.business_id), normalizedData.name],
       );
 
       if (existingShop) {
@@ -2145,13 +2209,13 @@ export const ShopService = {
           normalizedData.server_id ? now : null, // synced_at
           normalizedData.server_id ? "synced" : "pending", // sync_status
           normalizedData.server_id ? 0 : 1, // is_dirty
-        ]
+        ],
       );
 
       console.log(
         `✅ Shop created successfully: ${normalizedData.name} for business ${
           business?.name || normalizedData.business_id
-        }`
+        }`,
       );
       return { success: true, id: shopId };
     } catch (error) {
@@ -2180,7 +2244,7 @@ export const ShopService = {
 
       await db.runAsync(
         `UPDATE shops SET ${setClause}, updated_at = ?, sync_status = 'pending', is_dirty = 1 WHERE id = ?`,
-        [...values, now, shopIdStr]
+        [...values, now, shopIdStr],
       );
 
       // Get the updated shop
@@ -2212,7 +2276,7 @@ export const ShopService = {
 
       await db.runAsync(
         `UPDATE shops SET ${setClause}, updated_at = ?, sync_status = 'synced', is_dirty = 0 WHERE id = ?`,
-        [...values, now, shopIdStr]
+        [...values, now, shopIdStr],
       );
 
       // Get the updated shop
@@ -2235,7 +2299,7 @@ export const ShopService = {
       // Soft delete
       await db.runAsync(
         'UPDATE shops SET is_active = 0, updated_at = ?, sync_status = "pending", is_dirty = 1 WHERE id = ?',
-        [now, shopIdStr]
+        [now, shopIdStr],
       );
 
       return { success: true };
@@ -2258,14 +2322,14 @@ export const ShopService = {
       if (normalizedData.server_id) {
         existingShop = await db.getFirstAsync(
           "SELECT id FROM shops WHERE server_id = ?",
-          [normalizedData.server_id]
+          [normalizedData.server_id],
         );
       }
 
       if (!existingShop && normalizedData.id) {
         existingShop = await db.getFirstAsync(
           "SELECT id FROM shops WHERE id = ?",
-          [normalizedData.id]
+          [normalizedData.id],
         );
       }
 
@@ -2274,9 +2338,8 @@ export const ShopService = {
       let localBusinessId = null;
 
       if (businessServerId) {
-        const business = await BusinessService.getBusinessByServerId(
-          businessServerId
-        );
+        const business =
+          await BusinessService.getBusinessByServerId(businessServerId);
         if (business) {
           localBusinessId = business.id;
         }
@@ -2297,7 +2360,7 @@ export const ShopService = {
 
         await db.runAsync(
           `UPDATE shops SET ${setClause}, updated_at = ?, sync_status = 'synced', is_dirty = 0 WHERE id = ?`,
-          [...values, now, existingShop.id]
+          [...values, now, existingShop.id],
         );
 
         return { success: true, id: existingShop.id, action: "updated" };
@@ -2308,7 +2371,7 @@ export const ShopService = {
         // If we have a server business ID but no local business found, log warning
         if (businessServerId && !localBusinessId) {
           console.warn(
-            `⚠️ No local business found for server ID: ${businessServerId}, creating shop without business link`
+            `⚠️ No local business found for server ID: ${businessServerId}, creating shop without business link`,
           );
         }
 
@@ -2342,13 +2405,13 @@ export const ShopService = {
             now, // synced_at
             "synced",
             0,
-          ]
+          ],
         );
 
         console.log(
           `✅ Created synced shop: ${normalizedData.name} for business ${
             businessServerId || "unknown"
-          }`
+          }`,
         );
         return { success: true, id: shopId, action: "created" };
       }
@@ -2370,7 +2433,7 @@ export const ShopService = {
       // Try to find business by local ID
       const businessByLocalId = await db.getFirstAsync(
         "SELECT id, server_id FROM businesses WHERE id = ?",
-        [ensureStringId(businessId)]
+        [ensureStringId(businessId)],
       );
 
       if (businessByLocalId) {
@@ -2380,7 +2443,7 @@ export const ShopService = {
         // Try to find business by server ID
         const businessByServerId = await db.getFirstAsync(
           "SELECT id, server_id FROM businesses WHERE server_id = ?",
-          [ensureStringId(businessId)]
+          [ensureStringId(businessId)],
         );
 
         if (businessByServerId) {
@@ -2411,12 +2474,12 @@ export const ShopService = {
            LEFT JOIN users u ON s.manager_id = u.id 
            WHERE (s.business_id = ? OR s.business_server_id = ?) AND s.is_active = 1 
            ORDER BY s.created_at DESC`,
-          [ensureStringId(localBusinessId), ensureStringId(businessServerId)]
+          [ensureStringId(localBusinessId), ensureStringId(businessServerId)],
         );
 
         if (shopsData.length > 0) {
           console.log(
-            `✅ Found ${shopsData.length} shops by local business ID: ${localBusinessId}`
+            `✅ Found ${shopsData.length} shops by local business ID: ${localBusinessId}`,
           );
           return shopsData;
         }
@@ -2430,12 +2493,12 @@ export const ShopService = {
            LEFT JOIN users u ON s.manager_id = u.id 
            WHERE s.business_server_id = ? AND s.is_active = 1 
            ORDER BY s.created_at DESC`,
-          [ensureStringId(businessServerId)]
+          [ensureStringId(businessServerId)],
         );
 
         if (shopsData.length > 0) {
           console.log(
-            `✅ Found ${shopsData.length} shops by business server ID: ${businessServerId}`
+            `✅ Found ${shopsData.length} shops by business server ID: ${businessServerId}`,
           );
           return shopsData;
         }
@@ -2450,11 +2513,11 @@ export const ShopService = {
         [
           ensureStringId(localBusinessId || ""),
           ensureStringId(businessServerId || ""),
-        ]
+        ],
       );
 
       console.log(
-        `ℹ️ Found ${shopsData.length} shops for business ${businessId}`
+        `ℹ️ Found ${shopsData.length} shops for business ${businessId}`,
       );
       return shopsData;
     } catch (error) {
@@ -2476,11 +2539,11 @@ export const ShopService = {
          LEFT JOIN users u ON s.manager_id = u.id 
          WHERE s.business_server_id = ? AND s.is_active = 1 
          ORDER BY s.created_at DESC`,
-        [ensureStringId(serverId)]
+        [ensureStringId(serverId)],
       );
 
       console.log(
-        `✅ Found ${shopsData.length} shops by business server ID: ${serverId}`
+        `✅ Found ${shopsData.length} shops by business server ID: ${serverId}`,
       );
       return shopsData;
     } catch (error) {
@@ -2518,13 +2581,13 @@ export const ShopService = {
         console.log(`   Shop ID: ${shop.shop_id}`);
         console.log(`   Shop business_id (local): ${shop.shop_business_id}`);
         console.log(
-          `   Shop business_server_id (server): ${shop.shop_business_server_id}`
+          `   Shop business_server_id (server): ${shop.shop_business_server_id}`,
         );
         console.log(
-          `   Business local ID: ${shop.business_local_id || "NOT FOUND"}`
+          `   Business local ID: ${shop.business_local_id || "NOT FOUND"}`,
         );
         console.log(
-          `   Business server ID: ${shop.business_server_id || "NOT FOUND"}`
+          `   Business server ID: ${shop.business_server_id || "NOT FOUND"}`,
         );
         console.log(`   Business name: ${shop.business_name || "NOT FOUND"}`);
 
@@ -2547,7 +2610,7 @@ export const ShopService = {
         console.log(
           `   ${business.name}: local=${business.id}, server=${
             business.server_id || "none"
-          }`
+          }`,
         );
       });
 
@@ -2567,7 +2630,7 @@ export const ShopService = {
       // Get shop to find its business
       const shop = await db.getFirstAsync(
         "SELECT business_id FROM shops WHERE id = ?",
-        [shopIdStr]
+        [shopIdStr],
       );
 
       if (!shop) {
@@ -2577,13 +2640,13 @@ export const ShopService = {
       // Reset all shops in this business to not current
       await db.runAsync(
         "UPDATE shops SET is_current = 0 WHERE business_id = ?",
-        [ensureStringId(shop.business_id)]
+        [ensureStringId(shop.business_id)],
       );
 
       // Set selected shop as current
       await db.runAsync(
         "UPDATE shops SET is_current = 1, updated_at = ? WHERE id = ?",
-        [new Date().toISOString(), shopIdStr]
+        [new Date().toISOString(), shopIdStr],
       );
 
       // Store in AsyncStorage
@@ -2607,14 +2670,14 @@ export const ShopService = {
       if (shopId) {
         const shop = await db.getFirstAsync(
           "SELECT s.* FROM shops s WHERE s.id = ? AND s.is_active = 1",
-          [shopId]
+          [shopId],
         );
 
         if (shop) {
           // Check if user has access to this shop's business
           const access = await EmployeeService.checkUserBusinessAccess(
             userId,
-            shop.business_id
+            shop.business_id,
           );
           if (access) {
             return shop;
@@ -2629,7 +2692,7 @@ export const ShopService = {
          WHERE s.is_current = 1 AND s.is_active = 1 
          AND e.user_id = ? AND e.is_active = 1 
          LIMIT 1`,
-        [ensureStringId(userId)]
+        [ensureStringId(userId)],
       );
 
       if (shop) {
@@ -2680,7 +2743,7 @@ export const ShopService = {
         `SELECT s.* FROM shops s
          INNER JOIN businesses b ON s.business_id = b.id
          WHERE b.owner_id = ? AND s.is_active = 1`,
-        [ensureStringId(userId)]
+        [ensureStringId(userId)],
       );
 
       // Get shops where user is employed
@@ -2688,13 +2751,14 @@ export const ShopService = {
         `SELECT s.* FROM shops s
          INNER JOIN employees e ON s.business_id = e.business_id
          WHERE e.user_id = ? AND e.is_active = 1 AND s.is_active = 1`,
-        [ensureStringId(userId)]
+        [ensureStringId(userId)],
       );
 
       // Combine and remove duplicates
       const allShops = [...ownedShops, ...employeeShops];
       const uniqueShops = allShops.filter(
-        (shop, index, self) => index === self.findIndex((s) => s.id === shop.id)
+        (shop, index, self) =>
+          index === self.findIndex((s) => s.id === shop.id),
       );
 
       return uniqueShops;
@@ -2709,7 +2773,7 @@ export const ShopService = {
     try {
       const db = await openDatabase();
       return await db.getAllAsync(
-        'SELECT * FROM shops WHERE is_dirty = 1 OR sync_status = "pending"'
+        'SELECT * FROM shops WHERE is_dirty = 1 OR sync_status = "pending"',
       );
     } catch (error) {
       console.error("Error getting pending sync shops:", error);
@@ -2727,7 +2791,7 @@ export const ShopService = {
           ensureStringId(serverId),
           new Date().toISOString(),
           ensureStringId(localId),
-        ]
+        ],
       );
       return true;
     } catch (error) {
@@ -2748,7 +2812,7 @@ export const RoleService = {
 
       // IMPORTANT: Use server_id as the local id for UUID consistency
       const roleId = normalizedData.server_id || normalizedData.id || nanoid();
-      
+
       // Check if role already exists by server_id
       const existingRole = await db.getFirstAsync(
         "SELECT id FROM roles WHERE server_id = ? OR (name = ? AND role_type = ?)",
@@ -2756,7 +2820,7 @@ export const RoleService = {
           normalizedData.server_id || normalizedData.id,
           normalizedData.name,
           normalizedData.role_type,
-        ]
+        ],
       );
 
       if (existingRole) {
@@ -2780,13 +2844,13 @@ export const RoleService = {
             now,
             now,
             existingRole.id,
-          ]
+          ],
         );
         return { success: true, id: existingRole.id, action: "updated" };
       } else {
         // Insert new role - use server_id as id if available
         const finalRoleId = normalizedData.server_id || roleId;
-        
+
         await db.runAsync(
           `INSERT INTO roles (
             id, server_id, name, role_type, description, is_default,
@@ -2804,9 +2868,11 @@ export const RoleService = {
             now,
             "synced",
             0,
-          ]
+          ],
         );
-        console.log(`✅ Saved role: ${normalizedData.name} with ID: ${finalRoleId}`);
+        console.log(
+          `✅ Saved role: ${normalizedData.name} with ID: ${finalRoleId}`,
+        );
         return { success: true, id: finalRoleId, action: "created" };
       }
     } catch (error) {
@@ -2819,9 +2885,7 @@ export const RoleService = {
   getRoles: async () => {
     try {
       const db = await openDatabase();
-      return await db.getAllAsync(
-        "SELECT * FROM roles ORDER BY name ASC"
-      );
+      return await db.getAllAsync("SELECT * FROM roles ORDER BY name ASC");
     } catch (error) {
       console.error("Error getting roles:", error);
       return [];
@@ -2834,7 +2898,7 @@ export const RoleService = {
       const db = await openDatabase();
       return await db.getFirstAsync(
         "SELECT * FROM roles WHERE id = ? OR server_id = ?",
-        [ensureStringId(roleId), ensureStringId(roleId)]
+        [ensureStringId(roleId), ensureStringId(roleId)],
       );
     } catch (error) {
       console.error("Error getting role by ID:", error);
@@ -2846,10 +2910,9 @@ export const RoleService = {
   getRoleByServerId: async (serverId) => {
     try {
       const db = await openDatabase();
-      return await db.getFirstAsync(
-        "SELECT * FROM roles WHERE server_id = ?",
-        [ensureStringId(serverId)]
-      );
+      return await db.getFirstAsync("SELECT * FROM roles WHERE server_id = ?", [
+        ensureStringId(serverId),
+      ]);
     } catch (error) {
       console.error("Error getting role by server ID:", error);
       return null;
@@ -2860,10 +2923,9 @@ export const RoleService = {
   getRoleByType: async (roleType) => {
     try {
       const db = await openDatabase();
-      return await db.getFirstAsync(
-        "SELECT * FROM roles WHERE role_type = ?",
-        [roleType]
-      );
+      return await db.getFirstAsync("SELECT * FROM roles WHERE role_type = ?", [
+        roleType,
+      ]);
     } catch (error) {
       console.error("Error getting role by type:", error);
       return null;
@@ -2875,7 +2937,7 @@ export const RoleService = {
     try {
       const db = await openDatabase();
       return await db.getAllAsync(
-        'SELECT * FROM roles WHERE is_dirty = 1 OR sync_status = "pending"'
+        'SELECT * FROM roles WHERE is_dirty = 1 OR sync_status = "pending"',
       );
     } catch (error) {
       console.error("Error getting pending sync roles:", error);
@@ -2893,7 +2955,7 @@ export const RoleService = {
           ensureStringId(serverId),
           new Date().toISOString(),
           ensureStringId(localId),
-        ]
+        ],
       );
       return true;
     } catch (error) {
@@ -2950,7 +3012,7 @@ export const RoleService = {
         // Check if role already exists
         const existingRole = await db.getFirstAsync(
           "SELECT id FROM roles WHERE role_type = ?",
-          [roleData.role_type]
+          [roleData.role_type],
         );
 
         if (!existingRole) {
@@ -2971,9 +3033,11 @@ export const RoleService = {
               now,
               "synced",
               0,
-            ]
+            ],
           );
-          console.log(`✅ Seeded default role: ${roleData.name} with UUID: ${roleData.id}`);
+          console.log(
+            `✅ Seeded default role: ${roleData.name} with UUID: ${roleData.id}`,
+          );
         }
       }
 
@@ -2989,34 +3053,36 @@ export const RoleService = {
 export const fixRoleUUIDs = async () => {
   try {
     const db = await openDatabase();
-    console.log('🔧 Fixing role UUIDs in local database...');
-    
+    console.log("🔧 Fixing role UUIDs in local database...");
+
     // Get all roles
-    const roles = await db.getAllAsync('SELECT id, server_id FROM roles');
-    
+    const roles = await db.getAllAsync("SELECT id, server_id FROM roles");
+
     for (const role of roles) {
       // If server_id exists and is a UUID, but id is a nanoid
-      if (role.server_id && role.server_id.length === 36) { // UUID with hyphens
+      if (role.server_id && role.server_id.length === 36) {
+        // UUID with hyphens
         // Update the local id to match server_id
-        await db.runAsync(
-          'UPDATE roles SET id = ? WHERE ROWID = ?',
-          [role.server_id, role.id]
-        );
+        await db.runAsync("UPDATE roles SET id = ? WHERE ROWID = ?", [
+          role.server_id,
+          role.id,
+        ]);
         console.log(`✅ Updated role ${role.id} to use server UUID`);
-      } else if (role.server_id && role.server_id.length === 32) { // UUID without hyphens
+      } else if (role.server_id && role.server_id.length === 32) {
+        // UUID without hyphens
         // Convert to UUID with hyphens
-        const formattedUUID = `${role.server_id.slice(0,8)}-${role.server_id.slice(8,12)}-${role.server_id.slice(12,16)}-${role.server_id.slice(16,20)}-${role.server_id.slice(20)}`;
-        await db.runAsync(
-          'UPDATE roles SET id = ? WHERE ROWID = ?',
-          [formattedUUID, role.id]
-        );
+        const formattedUUID = `${role.server_id.slice(0, 8)}-${role.server_id.slice(8, 12)}-${role.server_id.slice(12, 16)}-${role.server_id.slice(16, 20)}-${role.server_id.slice(20)}`;
+        await db.runAsync("UPDATE roles SET id = ? WHERE ROWID = ?", [
+          formattedUUID,
+          role.id,
+        ]);
         console.log(`✅ Updated role ${role.id} to formatted UUID`);
       }
     }
-    
-    return { success: true, message: 'Role UUIDs fixed successfully' };
+
+    return { success: true, message: "Role UUIDs fixed successfully" };
   } catch (error) {
-    console.error('❌ Error fixing role UUIDs:', error);
+    console.error("❌ Error fixing role UUIDs:", error);
     return { success: false, error: error.message };
   }
 };
@@ -3033,7 +3099,7 @@ export const EmployeeService = {
 
       // CRITICAL: Ensure business_id is provided
       if (!normalizedData.business_id) {
-        throw new Error('business_id is required for creating an employee');
+        throw new Error("business_id is required for creating an employee");
       }
 
       // Check if employee already exists (by email in the same business)
@@ -3041,14 +3107,13 @@ export const EmployeeService = {
         `SELECT e.id FROM employees e 
         INNER JOIN users u ON e.user_id = u.id 
         WHERE u.email = ? AND e.business_id = ? AND e.is_active = 1`,
-        [
-          normalizedData.email,
-          ensureStringId(normalizedData.business_id),
-        ]
+        [normalizedData.email, ensureStringId(normalizedData.business_id)],
       );
 
       if (existingEmployee) {
-        throw new Error('Employee with this email already exists in this business');
+        throw new Error(
+          "Employee with this email already exists in this business",
+        );
       }
 
       // Create user record if user_id is not provided
@@ -3056,7 +3121,10 @@ export const EmployeeService = {
       if (!userId) {
         // Create a minimal user record
         const userData = {
-          username: normalizedData.email.split('@')[0] + '_' + Date.now().toString().slice(-6),
+          username:
+            normalizedData.email.split("@")[0] +
+            "_" +
+            Date.now().toString().slice(-6),
           email: normalizedData.email,
           first_name: normalizedData.first_name,
           last_name: normalizedData.last_name,
@@ -3082,7 +3150,9 @@ export const EmployeeService = {
           normalizedData.server_id || null,
           ensureStringId(userId),
           ensureStringId(normalizedData.business_id), // ← BUSINESS ID IS REQUIRED
-          normalizedData.shop_id ? ensureStringId(normalizedData.shop_id) : null,
+          normalizedData.shop_id
+            ? ensureStringId(normalizedData.shop_id)
+            : null,
           ensureStringId(normalizedData.role_id),
           normalizedData.first_name,
           normalizedData.last_name,
@@ -3096,14 +3166,14 @@ export const EmployeeService = {
           normalizedData.server_id ? 0 : 1,
           now,
           now,
-        ]
+        ],
       );
 
       // Update shop employee count if shop_id is provided
       if (normalizedData.shop_id) {
         const employeeCount = await db.getFirstAsync(
           "SELECT COUNT(*) as count FROM employees WHERE shop_id = ? AND is_active = 1",
-          [ensureStringId(normalizedData.shop_id)]
+          [ensureStringId(normalizedData.shop_id)],
         );
 
         await db.runAsync(
@@ -3112,11 +3182,13 @@ export const EmployeeService = {
             employeeCount?.count || 0,
             now,
             ensureStringId(normalizedData.shop_id),
-          ]
+          ],
         );
       }
 
-      console.log(`✅ Employee created: ${normalizedData.first_name} ${normalizedData.last_name}`);
+      console.log(
+        `✅ Employee created: ${normalizedData.first_name} ${normalizedData.last_name}`,
+      );
       return { success: true, id: employeeId };
     } catch (error) {
       console.error("❌ Error creating employee:", error);
@@ -3142,7 +3214,7 @@ export const EmployeeService = {
          LEFT JOIN users u ON e.user_id = u.id
          LEFT JOIN user_profiles up ON u.id = up.user_id  -- Join with user_profiles
          WHERE e.id = ?`,
-        [ensureStringId(employeeId)]
+        [ensureStringId(employeeId)],
       );
       return employee;
     } catch (error) {
@@ -3168,7 +3240,7 @@ export const EmployeeService = {
          LEFT JOIN user_profiles up ON u.id = up.user_id  -- Join with user_profiles
          WHERE e.business_id = ? AND e.is_active = 1
          ORDER BY e.created_at DESC`,
-        [ensureStringId(businessId)]
+        [ensureStringId(businessId)],
       );
     } catch (error) {
       console.error("Error getting employees by business:", error);
@@ -3192,7 +3264,7 @@ export const EmployeeService = {
          LEFT JOIN user_profiles up ON u.id = up.user_id  -- Join with user_profiles
          WHERE e.shop_id = ? AND e.is_active = 1
          ORDER BY e.created_at DESC`,
-        [ensureStringId(shopId)]
+        [ensureStringId(shopId)],
       );
     } catch (error) {
       console.error("Error getting employees by shop:", error);
@@ -3208,7 +3280,8 @@ export const EmployeeService = {
       const employeeIdStr = ensureStringId(employeeId);
 
       // Get current employee to check for shop changes
-      const currentEmployee = await EmployeeService.getEmployeeById(employeeIdStr);
+      const currentEmployee =
+        await EmployeeService.getEmployeeById(employeeIdStr);
       if (!currentEmployee) {
         throw new Error("Employee not found");
       }
@@ -3226,7 +3299,7 @@ export const EmployeeService = {
 
       await db.runAsync(
         `UPDATE employees SET ${setClause}, updated_at = ?, sync_status = 'pending', is_dirty = 1 WHERE id = ?`,
-        [...values, now, employeeIdStr]
+        [...values, now, employeeIdStr],
       );
 
       // Update shop employee counts if shop_id changed
@@ -3238,11 +3311,11 @@ export const EmployeeService = {
         if (oldShopId) {
           const oldShopCount = await db.getFirstAsync(
             "SELECT COUNT(*) as count FROM employees WHERE shop_id = ? AND is_active = 1",
-            [ensureStringId(oldShopId)]
+            [ensureStringId(oldShopId)],
           );
           await db.runAsync(
             "UPDATE shops SET employee_count = ?, updated_at = ? WHERE id = ?",
-            [oldShopCount?.count || 0, now, ensureStringId(oldShopId)]
+            [oldShopCount?.count || 0, now, ensureStringId(oldShopId)],
           );
         }
 
@@ -3250,17 +3323,18 @@ export const EmployeeService = {
         if (newShopId) {
           const newShopCount = await db.getFirstAsync(
             "SELECT COUNT(*) as count FROM employees WHERE shop_id = ? AND is_active = 1",
-            [ensureStringId(newShopId)]
+            [ensureStringId(newShopId)],
           );
           await db.runAsync(
             "UPDATE shops SET employee_count = ?, updated_at = ? WHERE id = ?",
-            [newShopCount?.count || 0, now, ensureStringId(newShopId)]
+            [newShopCount?.count || 0, now, ensureStringId(newShopId)],
           );
         }
       }
 
       // Get updated employee
-      const updatedEmployee = await EmployeeService.getEmployeeById(employeeIdStr);
+      const updatedEmployee =
+        await EmployeeService.getEmployeeById(employeeIdStr);
 
       return { success: true, employee: updatedEmployee };
     } catch (error) {
@@ -3285,19 +3359,19 @@ export const EmployeeService = {
       // Soft delete
       await db.runAsync(
         'UPDATE employees SET is_active = 0, termination_date = ?, updated_at = ?, sync_status = "pending", is_dirty = 1 WHERE id = ?',
-        [now, now, employeeIdStr]
+        [now, now, employeeIdStr],
       );
 
       // Update shop employee count if employee was assigned to a shop
       if (employee.shop_id) {
         const employeeCount = await db.getFirstAsync(
           "SELECT COUNT(*) as count FROM employees WHERE shop_id = ? AND is_active = 1",
-          [ensureStringId(employee.shop_id)]
+          [ensureStringId(employee.shop_id)],
         );
 
         await db.runAsync(
           "UPDATE shops SET employee_count = ?, updated_at = ? WHERE id = ?",
-          [employeeCount?.count || 0, now, ensureStringId(employee.shop_id)]
+          [employeeCount?.count || 0, now, ensureStringId(employee.shop_id)],
         );
       }
 
@@ -3321,19 +3395,20 @@ export const EmployeeService = {
       if (normalizedData.server_id) {
         existingEmployee = await db.getFirstAsync(
           "SELECT id FROM employees WHERE server_id = ?",
-          [normalizedData.server_id]
+          [normalizedData.server_id],
         );
       }
 
       // Also check by email and business_id
-      if (!existingEmployee && normalizedData.email && normalizedData.business_id) {
+      if (
+        !existingEmployee &&
+        normalizedData.email &&
+        normalizedData.business_id
+      ) {
         existingEmployee = await db.getFirstAsync(
           `SELECT e.id FROM employees e 
            WHERE e.email = ? AND e.business_id = ?`,
-          [
-            normalizedData.email,
-            ensureStringId(normalizedData.business_id),
-          ]
+          [normalizedData.email, ensureStringId(normalizedData.business_id)],
         );
       }
 
@@ -3345,7 +3420,7 @@ export const EmployeeService = {
 
         await db.runAsync(
           `UPDATE employees SET ${setClause}, updated_at = ?, sync_status = 'synced', is_dirty = 0 WHERE id = ?`,
-          [...values, now, existingEmployee.id]
+          [...values, now, existingEmployee.id],
         );
 
         return { success: true, id: existingEmployee.id, action: "updated" };
@@ -3359,7 +3434,7 @@ export const EmployeeService = {
           // Check if user exists by email
           const existingUser = await db.getFirstAsync(
             "SELECT id FROM users WHERE email = ?",
-            [normalizedData.email]
+            [normalizedData.email],
           );
 
           if (existingUser) {
@@ -3368,7 +3443,7 @@ export const EmployeeService = {
             // Create new user
             const userData = {
               email: normalizedData.email,
-              username: normalizedData.email.split('@')[0],
+              username: normalizedData.email.split("@")[0],
               first_name: normalizedData.first_name || "",
               last_name: normalizedData.last_name || "",
               phone_number: normalizedData.phone_number || "",
@@ -3392,7 +3467,9 @@ export const EmployeeService = {
             normalizedData.server_id || normalizedData.id || null,
             ensureStringId(userId || nanoid()),
             ensureStringId(normalizedData.business_id || ""),
-            normalizedData.shop_id ? ensureStringId(normalizedData.shop_id) : null,
+            normalizedData.shop_id
+              ? ensureStringId(normalizedData.shop_id)
+              : null,
             ensureStringId(normalizedData.role_id || ""),
             normalizedData.first_name || "",
             normalizedData.last_name || "",
@@ -3407,7 +3484,7 @@ export const EmployeeService = {
             normalizedData.created_at || now,
             now,
             now,
-          ]
+          ],
         );
 
         return { success: true, id: employeeId, action: "created" };
@@ -3423,7 +3500,7 @@ export const EmployeeService = {
     try {
       const db = await openDatabase();
       return await db.getAllAsync(
-        'SELECT * FROM employees WHERE is_dirty = 1 OR sync_status = "pending"'
+        'SELECT * FROM employees WHERE is_dirty = 1 OR sync_status = "pending"',
       );
     } catch (error) {
       console.error("Error getting pending sync employees:", error);
@@ -3441,7 +3518,7 @@ export const EmployeeService = {
           ensureStringId(serverId),
           new Date().toISOString(),
           ensureStringId(localId),
-        ]
+        ],
       );
       return true;
     } catch (error) {
@@ -3458,7 +3535,7 @@ export const EmployeeService = {
       // Check if user owns the business
       const isOwner = await db.getFirstAsync(
         "SELECT id FROM businesses WHERE owner_id = ? AND id = ? AND is_active = 1",
-        [ensureStringId(userId), ensureStringId(businessId)]
+        [ensureStringId(userId), ensureStringId(businessId)],
       );
 
       if (isOwner) return true;
@@ -3466,7 +3543,7 @@ export const EmployeeService = {
       // Check if user is an employee in the business
       const isEmployee = await db.getFirstAsync(
         "SELECT id FROM employees WHERE user_id = ? AND business_id = ? AND is_active = 1",
-        [ensureStringId(userId), ensureStringId(businessId)]
+        [ensureStringId(userId), ensureStringId(businessId)],
       );
 
       return !!isEmployee;
@@ -3487,7 +3564,7 @@ export const EmployeeService = {
          LEFT JOIN roles r ON e.role_id = r.id
          LEFT JOIN shops s ON e.shop_id = s.id
          WHERE e.user_id = ? AND e.business_id = ? AND e.is_active = 1`,
-        [ensureStringId(userId), ensureStringId(businessId)]
+        [ensureStringId(userId), ensureStringId(businessId)],
       );
     } catch (error) {
       console.error("Error getting user employment:", error);
@@ -3512,7 +3589,7 @@ export const EmployeeService = {
          LEFT JOIN user_profiles up ON e.user_id = up.user_id  -- Join with user_profiles
          WHERE e.user_id = ? AND e.is_active = 1
          ORDER BY e.created_at DESC`,
-        [ensureStringId(userId)]
+        [ensureStringId(userId)],
       );
     } catch (error) {
       console.error("Error getting user employees:", error);
@@ -3532,7 +3609,7 @@ export const TaxService = {
 
       // Use server_id as local id for UUID consistency
       const taxId = normalizedData.server_id || normalizedData.id || uuid.v4();
-      
+
       // Check if tax already exists
       const existingTax = await db.getFirstAsync(
         "SELECT id FROM taxes WHERE server_id = ? OR (name = ? AND rate = ?)",
@@ -3540,7 +3617,7 @@ export const TaxService = {
           normalizedData.server_id || normalizedData.id,
           normalizedData.name,
           normalizedData.rate,
-        ]
+        ],
       );
 
       if (existingTax) {
@@ -3558,11 +3635,11 @@ export const TaxService = {
           [
             normalizedData.name,
             normalizedData.rate,
-            normalizedData.tax_type || 'standard',
+            normalizedData.tax_type || "standard",
             normalizedData.is_active !== false ? 1 : 0,
             now,
             existingTax.id,
-          ]
+          ],
         );
         return { success: true, id: existingTax.id, action: "updated" };
       } else {
@@ -3577,15 +3654,17 @@ export const TaxService = {
             normalizedData.server_id || normalizedData.id || null,
             normalizedData.name,
             normalizedData.rate,
-            normalizedData.tax_type || 'standard',
+            normalizedData.tax_type || "standard",
             normalizedData.is_active !== false ? 1 : 0,
             normalizedData.created_at || now,
             now,
             "synced",
             0,
-          ]
+          ],
         );
-        console.log(`✅ Saved tax: ${normalizedData.name} (${normalizedData.rate}%)`);
+        console.log(
+          `✅ Saved tax: ${normalizedData.name} (${normalizedData.rate}%)`,
+        );
         return { success: true, id: taxId, action: "created" };
       }
     } catch (error) {
@@ -3599,7 +3678,7 @@ export const TaxService = {
     try {
       const db = await openDatabase();
       return await db.getAllAsync(
-        "SELECT * FROM taxes WHERE is_active = 1 ORDER BY name ASC"
+        "SELECT * FROM taxes WHERE is_active = 1 ORDER BY name ASC",
       );
     } catch (error) {
       console.error("Error getting taxes:", error);
@@ -3613,7 +3692,7 @@ export const TaxService = {
       const db = await openDatabase();
       return await db.getFirstAsync(
         "SELECT * FROM taxes WHERE id = ? OR server_id = ?",
-        [ensureStringId(taxId), ensureStringId(taxId)]
+        [ensureStringId(taxId), ensureStringId(taxId)],
       );
     } catch (error) {
       console.error("Error getting tax by ID:", error);
@@ -3626,7 +3705,7 @@ export const TaxService = {
     try {
       const db = await openDatabase();
       return await db.getAllAsync(
-        'SELECT * FROM taxes WHERE is_dirty = 1 OR sync_status = "pending"'
+        'SELECT * FROM taxes WHERE is_dirty = 1 OR sync_status = "pending"',
       );
     } catch (error) {
       console.error("Error getting pending sync taxes:", error);
@@ -3636,7 +3715,7 @@ export const TaxService = {
 
   // Mark tax as synced
   markAsSynced: async (localId, serverId) => {
-    return BaseService.markAsSynced('taxes', localId, serverId);
+    return BaseService.markAsSynced("taxes", localId, serverId);
   },
 
   // Seed default taxes
@@ -3690,20 +3769,23 @@ export const CategoryService = {
       // Verify user has access to the business
       const hasAccess = await EmployeeService.checkUserBusinessAccess(
         userId,
-        normalizedData.business_id
+        normalizedData.business_id,
       );
 
       if (!hasAccess && normalizedData.business_id) {
         // Also check if user owns the business
-        const business = await BusinessService.getBusinessById(normalizedData.business_id);
+        const business = await BusinessService.getBusinessById(
+          normalizedData.business_id,
+        );
         if (!business || business.owner_id !== userId) {
           throw new Error("You don't have access to this business");
         }
       }
 
       // Use server_id as local id for UUID consistency
-      const categoryId = normalizedData.server_id || normalizedData.id || uuid.v4();
-      
+      const categoryId =
+        normalizedData.server_id || normalizedData.id || uuid.v4();
+
       // Check if category already exists
       const existingCategory = await db.getFirstAsync(
         "SELECT id FROM categories WHERE server_id = ? OR (business_id = ? AND name = ?)",
@@ -3711,7 +3793,7 @@ export const CategoryService = {
           normalizedData.server_id || normalizedData.id,
           ensureStringId(normalizedData.business_id),
           normalizedData.name,
-        ]
+        ],
       );
 
       if (existingCategory) {
@@ -3733,22 +3815,26 @@ export const CategoryService = {
           [
             normalizedData.business || normalizedData.business_server_id,
             normalizedData.name,
-            normalizedData.description || '',
-            normalizedData.parent_id ? ensureStringId(normalizedData.parent_id) : null,
-            normalizedData.color || '#FF6B35',
+            normalizedData.description || "",
+            normalizedData.parent_id
+              ? ensureStringId(normalizedData.parent_id)
+              : null,
+            normalizedData.color || "#FF6B35",
             normalizedData.image || null,
             normalizedData.is_active !== false ? 1 : 0,
             now,
             now,
             existingCategory.id,
-          ]
+          ],
         );
         return { success: true, id: existingCategory.id, action: "updated" };
       } else {
         // Get business server_id if available
         let businessServerId = normalizedData.business;
         if (!businessServerId && normalizedData.business_id) {
-          const business = await BusinessService.getBusinessById(normalizedData.business_id);
+          const business = await BusinessService.getBusinessById(
+            normalizedData.business_id,
+          );
           businessServerId = business?.server_id || null;
         }
 
@@ -3765,9 +3851,11 @@ export const CategoryService = {
             ensureStringId(normalizedData.business_id),
             businessServerId,
             normalizedData.name,
-            normalizedData.description || '',
-            normalizedData.parent_id ? ensureStringId(normalizedData.parent_id) : null,
-            normalizedData.color || '#FF6B35',
+            normalizedData.description || "",
+            normalizedData.parent_id
+              ? ensureStringId(normalizedData.parent_id)
+              : null,
+            normalizedData.color || "#FF6B35",
             normalizedData.image || null,
             normalizedData.is_active !== false ? 1 : 0,
             normalizedData.created_at || now,
@@ -3775,9 +3863,11 @@ export const CategoryService = {
             now,
             "synced",
             0,
-          ]
+          ],
         );
-        console.log(`✅ Saved category: ${normalizedData.name} for business ${normalizedData.business_id}`);
+        console.log(
+          `✅ Saved category: ${normalizedData.name} for business ${normalizedData.business_id}`,
+        );
         return { success: true, id: categoryId, action: "created" };
       }
     } catch (error) {
@@ -3790,14 +3880,14 @@ export const CategoryService = {
   getCategoriesByBusiness: async (businessId, userId) => {
     try {
       const db = await openDatabase();
-      
+
       return await db.getAllAsync(
         `SELECT c.*
          FROM categories c
          WHERE c.business_id = ? 
            AND c.is_active = 1
          ORDER BY c.name`,
-        [ensureStringId(businessId)]
+        [ensureStringId(businessId)],
       );
     } catch (error) {
       console.error("Error getting categories by business:", error);
@@ -3812,15 +3902,20 @@ export const CategoryService = {
       const category = await db.getFirstAsync(
         `SELECT c.* FROM categories c
          WHERE c.id = ? AND c.is_active = 1`,
-        [ensureStringId(categoryId)]
+        [ensureStringId(categoryId)],
       );
 
       if (!category) return null;
 
       // Verify user has access to the business
-      const hasAccess = await EmployeeService.checkUserBusinessAccess(userId, category.business_id);
+      const hasAccess = await EmployeeService.checkUserBusinessAccess(
+        userId,
+        category.business_id,
+      );
       if (!hasAccess) {
-        const business = await BusinessService.getBusinessById(category.business_id);
+        const business = await BusinessService.getBusinessById(
+          category.business_id,
+        );
         if (!business || business.owner_id !== userId) {
           return null;
         }
@@ -3841,7 +3936,10 @@ export const CategoryService = {
       const categoryIdStr = ensureStringId(categoryId);
 
       // Get category to check business access
-      const category = await CategoryService.getCategoryById(categoryIdStr, userId);
+      const category = await CategoryService.getCategoryById(
+        categoryIdStr,
+        userId,
+      );
       if (!category) {
         throw new Error("Category not found or access denied");
       }
@@ -3852,7 +3950,7 @@ export const CategoryService = {
 
       await db.runAsync(
         `UPDATE categories SET ${setClause}, updated_at = ?, sync_status = 'pending', is_dirty = 1 WHERE id = ?`,
-        [...values, now, categoryIdStr]
+        [...values, now, categoryIdStr],
       );
 
       return { success: true };
@@ -3870,14 +3968,17 @@ export const CategoryService = {
       const categoryIdStr = ensureStringId(categoryId);
 
       // Get category to check business access
-      const category = await CategoryService.getCategoryById(categoryIdStr, userId);
+      const category = await CategoryService.getCategoryById(
+        categoryIdStr,
+        userId,
+      );
       if (!category) {
         throw new Error("Category not found or access denied");
       }
 
       await db.runAsync(
         'UPDATE categories SET is_active = 0, updated_at = ?, sync_status = "pending", is_dirty = 1 WHERE id = ?',
-        [now, categoryIdStr]
+        [now, categoryIdStr],
       );
 
       return { success: true };
@@ -3892,7 +3993,7 @@ export const CategoryService = {
     try {
       const db = await openDatabase();
       return await db.getAllAsync(
-        'SELECT * FROM categories WHERE is_dirty = 1 OR sync_status = "pending"'
+        'SELECT * FROM categories WHERE is_dirty = 1 OR sync_status = "pending"',
       );
     } catch (error) {
       console.error("Error getting pending sync categories:", error);
@@ -3902,8 +4003,88 @@ export const CategoryService = {
 
   // Mark category as synced
   markAsSynced: async (localId, serverId) => {
-    return BaseService.markAsSynced('categories', localId, serverId);
+    return BaseService.markAsSynced("categories", localId, serverId);
   },
+};
+
+// Helper to upsert inventory record for a product or variant
+const upsertInventory = async (
+  db,
+  productId,
+  variantId,
+  shopId,
+  currentStock,
+  reorderLevel,
+) => {
+  const now = new Date().toISOString();
+
+  if (productId) {
+    const existing = await db.getFirstAsync(
+      "SELECT id FROM inventory WHERE product_id = ? AND shop_id = ? AND is_active = 1",
+      [productId, shopId],
+    );
+    if (existing) {
+      await db.runAsync(
+        `
+        UPDATE inventory SET current_stock = ?, updated_at = ? WHERE id = ?
+      `,
+        [currentStock, now, existing.id],
+      );
+    } else {
+      await db.runAsync(
+        `
+        INSERT INTO inventory (
+          id, product_id, shop_id, current_stock, reserved_stock, minimum_stock,
+          is_active, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+        [
+          nanoid(),
+          productId,
+          shopId,
+          currentStock,
+          0,
+          reorderLevel || 0,
+          1,
+          now,
+          now,
+        ],
+      );
+    }
+  } else if (variantId) {
+    const existing = await db.getFirstAsync(
+      "SELECT id FROM inventory WHERE variant_id = ? AND shop_id = ? AND is_active = 1",
+      [variantId, shopId],
+    );
+    if (existing) {
+      await db.runAsync(
+        `
+        UPDATE inventory SET current_stock = ?, updated_at = ? WHERE id = ?
+      `,
+        [currentStock, now, existing.id],
+      );
+    } else {
+      await db.runAsync(
+        `
+        INSERT INTO inventory (
+          id, variant_id, shop_id, current_stock, reserved_stock, minimum_stock,
+          is_active, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+        [
+          nanoid(),
+          variantId,
+          shopId,
+          currentStock,
+          0,
+          reorderLevel || 0,
+          1,
+          now,
+          now,
+        ],
+      );
+    }
+  }
 };
 
 // UPDATED: Product Service - Only user-specific products
@@ -3920,11 +4101,13 @@ export const ProductService = {
       if (normalizedData.business_id) {
         const hasAccess = await EmployeeService.checkUserBusinessAccess(
           userId,
-          normalizedData.business_id
+          normalizedData.business_id,
         );
 
         if (!hasAccess) {
-          const business = await BusinessService.getBusinessById(normalizedData.business_id);
+          const business = await BusinessService.getBusinessById(
+            normalizedData.business_id,
+          );
           if (!business || business.owner_id !== userId) {
             throw new Error("You don't have access to this business");
           }
@@ -3934,7 +4117,9 @@ export const ProductService = {
       // Get business server_id if available
       let businessServerId = normalizedData.business;
       if (!businessServerId && normalizedData.business_id) {
-        const business = await BusinessService.getBusinessById(normalizedData.business_id);
+        const business = await BusinessService.getBusinessById(
+          normalizedData.business_id,
+        );
         businessServerId = business?.server_id || null;
       }
 
@@ -3954,7 +4139,9 @@ export const ProductService = {
           businessServerId,
           normalizedData.name || "",
           normalizedData.description || "",
-          normalizedData.category_id ? ensureStringId(normalizedData.category_id) : null,
+          normalizedData.category_id
+            ? ensureStringId(normalizedData.category_id)
+            : null,
           normalizedData.product_type || "physical",
           normalizedData.has_variants ? 1 : 0,
           normalizedData.variant_type || "none",
@@ -3975,10 +4162,12 @@ export const ProductService = {
           now,
           "pending",
           1,
-        ]
+        ],
       );
 
-      console.log(`✅ Created product: ${normalizedData.name} for user ${userId}`);
+      console.log(
+        `✅ Created product: ${normalizedData.name} for user ${userId}`,
+      );
       return { success: true, id: productId };
     } catch (error) {
       console.error("Error creating product:", error);
@@ -3992,23 +4181,28 @@ export const ProductService = {
       const db = await openDatabase();
 
       // Verify user has access to this business
-      const hasAccess = await EmployeeService.checkUserBusinessAccess(userId, businessId);
+      const hasAccess = await EmployeeService.checkUserBusinessAccess(
+        userId,
+        businessId,
+      );
       if (!hasAccess) {
         const business = await BusinessService.getBusinessById(businessId);
         if (!business || business.owner_id !== userId) {
-          console.warn(`User ${userId} doesn't have access to business ${businessId}`);
+          console.warn(
+            `User ${userId} doesn't have access to business ${businessId}`,
+          );
           return [];
         }
       }
 
       const {
         includeInactive = false,
-        search = '',
+        search = "",
         categoryId = null,
         hasVariants = null,
         limit = null,
         offset = 0,
-        shopId = null
+        shopId = null,
       } = options;
 
       let whereClause = "p.business_id = ?";
@@ -4019,7 +4213,8 @@ export const ProductService = {
       }
 
       if (search) {
-        whereClause += " AND (p.name LIKE ? OR p.description LIKE ? OR p.base_sku LIKE ? OR p.base_barcode LIKE ?)";
+        whereClause +=
+          " AND (p.name LIKE ? OR p.description LIKE ? OR p.base_sku LIKE ? OR p.base_barcode LIKE ?)";
         const searchTerm = `%${search}%`;
         params.push(searchTerm, searchTerm, searchTerm, searchTerm);
       }
@@ -4071,26 +4266,26 @@ export const ProductService = {
       const productsWithInventory = await Promise.all(
         products.map(async (product) => {
           let totalStock = 0;
-          
+
           if (product.has_variants === 1 && currentShopId) {
             // Get all variants and sum their inventory
             const variants = await db.getAllAsync(
               `SELECT id FROM product_variants WHERE product_id = ? AND is_active = 1`,
-              [ensureStringId(product.id)]
+              [ensureStringId(product.id)],
             );
-            
+
             for (const variant of variants) {
               const variantInventory = await db.getFirstAsync(
                 `SELECT current_stock FROM inventory 
                  WHERE variant_id = ? AND shop_id = ? AND is_active = 1`,
-                [ensureStringId(variant.id), ensureStringId(currentShopId)]
+                [ensureStringId(variant.id), ensureStringId(currentShopId)],
               );
-              
+
               if (variantInventory) {
                 totalStock += variantInventory.current_stock || 0;
               }
             }
-            
+
             // Add total stock as a field
             product.total_stock = totalStock;
           } else if (currentShopId) {
@@ -4098,9 +4293,9 @@ export const ProductService = {
             const inventory = await db.getFirstAsync(
               `SELECT current_stock FROM inventory 
                WHERE product_id = ? AND shop_id = ? AND is_active = 1`,
-              [ensureStringId(product.id), ensureStringId(currentShopId)]
+              [ensureStringId(product.id), ensureStringId(currentShopId)],
             );
-            
+
             if (inventory) {
               product.total_stock = inventory.current_stock || 0;
             } else {
@@ -4109,9 +4304,9 @@ export const ProductService = {
           } else {
             product.total_stock = 0;
           }
-          
+
           return product;
-        })
+        }),
       );
 
       return productsWithInventory;
@@ -4125,7 +4320,7 @@ export const ProductService = {
   getProductById: async (productId, userId) => {
     try {
       const db = await openDatabase();
-      
+
       const product = await db.getFirstAsync(
         `SELECT p.*, 
                 c.name as category_name,
@@ -4139,15 +4334,20 @@ export const ProductService = {
          LEFT JOIN taxes t ON p.tax_id = t.id
          LEFT JOIN users u ON p.created_by = u.id
          WHERE p.id = ?`,
-        [ensureStringId(productId)]
+        [ensureStringId(productId)],
       );
 
       if (!product) return null;
 
       // Verify user has access to the business
-      const hasAccess = await EmployeeService.checkUserBusinessAccess(userId, product.business_id);
+      const hasAccess = await EmployeeService.checkUserBusinessAccess(
+        userId,
+        product.business_id,
+      );
       if (!hasAccess) {
-        const business = await BusinessService.getBusinessById(product.business_id);
+        const business = await BusinessService.getBusinessById(
+          product.business_id,
+        );
         if (!business || business.owner_id !== userId) {
           return null;
         }
@@ -4175,7 +4375,7 @@ export const ProductService = {
           `SELECT v.* FROM product_variants v
            WHERE v.product_id = ? AND v.is_active = 1
            ORDER BY v.is_default DESC, v.name`,
-          [ensureStringId(productId)]
+          [ensureStringId(productId)],
         );
 
         // Get variant attributes
@@ -4186,7 +4386,7 @@ export const ProductService = {
              JOIN product_attributes pa ON pva.attribute_id = pa.id
              JOIN product_attribute_values pav ON pva.value_id = pav.id
              WHERE pva.variant_id = ?`,
-            [ensureStringId(variant.id)]
+            [ensureStringId(variant.id)],
           );
         }
       }
@@ -4199,7 +4399,7 @@ export const ProductService = {
          WHERE (i.product_id = ? OR i.variant_id IN (
            SELECT id FROM product_variants WHERE product_id = ?
          )) AND i.is_active = 1`,
-        [ensureStringId(productId), ensureStringId(productId)]
+        [ensureStringId(productId), ensureStringId(productId)],
       );
 
       // Get product images
@@ -4207,7 +4407,7 @@ export const ProductService = {
         `SELECT * FROM product_images
          WHERE product_id = ? AND variant_id IS NULL
          ORDER BY display_order, is_primary DESC`,
-        [ensureStringId(productId)]
+        [ensureStringId(productId)],
       );
 
       return {
@@ -4237,7 +4437,12 @@ export const ProductService = {
 
       const fields = Object.keys(updates);
       const values = fields.map((field) => {
-        if (field === 'has_variants' || field === 'tax_inclusive' || field === 'is_trackable' || field === 'is_active') {
+        if (
+          field === "has_variants" ||
+          field === "tax_inclusive" ||
+          field === "is_trackable" ||
+          field === "is_active"
+        ) {
           return updates[field] ? 1 : 0;
         }
         return updates[field];
@@ -4247,18 +4452,21 @@ export const ProductService = {
 
       await db.runAsync(
         `UPDATE products SET ${setClause}, updated_at = ?, sync_status = 'pending', is_dirty = 1 WHERE id = ?`,
-        [...values, now, productIdStr]
+        [...values, now, productIdStr],
       );
 
       // Create price history entry if price changed
-      if (updates.base_selling_price && updates.base_selling_price !== product.base_selling_price) {
+      if (
+        updates.base_selling_price &&
+        updates.base_selling_price !== product.base_selling_price
+      ) {
         await PriceHistoryService.createPriceHistory({
           product_id: productIdStr,
           old_price: product.base_selling_price,
           new_price: updates.base_selling_price,
-          price_type: 'selling',
+          price_type: "selling",
           changed_by: userId,
-          change_reason: updates.change_reason || 'Price update',
+          change_reason: updates.change_reason || "Price update",
         });
       }
 
@@ -4284,7 +4492,7 @@ export const ProductService = {
 
       await db.runAsync(
         'UPDATE products SET is_active = 0, updated_at = ?, sync_status = "pending", is_dirty = 1 WHERE id = ?',
-        [now, productIdStr]
+        [now, productIdStr],
       );
 
       return { success: true };
@@ -4300,7 +4508,10 @@ export const ProductService = {
       const db = await openDatabase();
 
       // Verify user has access to this business
-      const hasAccess = await EmployeeService.checkUserBusinessAccess(userId, businessId);
+      const hasAccess = await EmployeeService.checkUserBusinessAccess(
+        userId,
+        businessId,
+      );
       if (!hasAccess) {
         const business = await BusinessService.getBusinessById(businessId);
         if (!business || business.owner_id !== userId) {
@@ -4308,19 +4519,16 @@ export const ProductService = {
         }
       }
 
-      const {
-        shopId = null,
-        includeInactive = false,
-        limit = 50
-      } = options;
+      const { shopId = null, includeInactive = false, limit = 50 } = options;
 
-      let whereClause = "p.business_id = ? AND (p.name LIKE ? OR p.description LIKE ? OR p.base_sku LIKE ? OR p.base_barcode LIKE ?)";
+      let whereClause =
+        "p.business_id = ? AND (p.name LIKE ? OR p.description LIKE ? OR p.base_sku LIKE ? OR p.base_barcode LIKE ?)";
       const params = [
         ensureStringId(businessId),
         `%${query}%`,
         `%${query}%`,
         `%${query}%`,
-        `%${query}%`
+        `%${query}%`,
       ];
 
       if (!includeInactive) {
@@ -4350,7 +4558,7 @@ export const ProductService = {
          WHERE ${whereClause}
          ORDER BY p.name
          LIMIT ?`,
-        [...params, limit]
+        [...params, limit],
       );
     } catch (error) {
       console.error("Error searching products:", error);
@@ -4363,7 +4571,7 @@ export const ProductService = {
     try {
       const db = await openDatabase();
       return await db.getAllAsync(
-        'SELECT * FROM products WHERE is_dirty = 1 OR sync_status = "pending"'
+        'SELECT * FROM products WHERE is_dirty = 1 OR sync_status = "pending"',
       );
     } catch (error) {
       console.error("Error getting pending sync products:", error);
@@ -4373,84 +4581,117 @@ export const ProductService = {
 
   // Mark product as synced
   markAsSynced: async (localId, serverId) => {
-    return BaseService.markAsSynced('products', localId, serverId);
+    return BaseService.markAsSynced("products", localId, serverId);
   },
 
   // Sync product from server (with user access check)
+  // In database/index.js, inside ProductService
   syncProductFromServer: async (productData, userId) => {
     try {
       const db = await openDatabase();
       const normalizedData = normalizeIds(productData);
       const now = new Date().toISOString();
 
+      // --- FIX: Convert empty barcode to null ---
+      if (normalizedData.base_barcode === "") {
+        normalizedData.base_barcode = null;
+      }
+
       // Check if user has access to the business
       const businessId = normalizedData.business_id;
       if (businessId) {
-        const hasAccess = await EmployeeService.checkUserBusinessAccess(userId, businessId);
+        const hasAccess = await EmployeeService.checkUserBusinessAccess(
+          userId,
+          businessId,
+        );
         if (!hasAccess) {
           const business = await BusinessService.getBusinessById(businessId);
           if (!business || business.owner_id !== userId) {
-            console.warn(`User ${userId} doesn't have access to sync product for business ${businessId}`);
+            console.warn(
+              `User ${userId} doesn't have access to sync product for business ${businessId}`,
+            );
             return { success: false, error: "Access denied" };
           }
         }
       }
 
-      // Check if product exists
+      // Check if product exists by server_id
       let existingProduct = null;
       if (normalizedData.server_id) {
         existingProduct = await db.getFirstAsync(
           "SELECT id FROM products WHERE server_id = ?",
-          [normalizedData.server_id]
+          [normalizedData.server_id],
         );
+      }
+
+      // --- NEW: Check by barcode if still not found ---
+      if (!existingProduct && normalizedData.base_barcode) {
+        existingProduct = await db.getFirstAsync(
+          `SELECT id FROM products 
+         WHERE base_barcode = ? 
+           AND business_id = ?`,
+          [normalizedData.base_barcode, normalizedData.business_id],
+        );
+        if (existingProduct) {
+          console.log(
+            `⚠️ Found product with same barcode "${normalizedData.base_barcode}" for business ${normalizedData.business_id}. ` +
+              `Updating existing product ${existingProduct.id} instead of creating new.`,
+          );
+        }
       }
 
       if (existingProduct) {
         // Update existing product
         await db.runAsync(
           `UPDATE products SET
-            business_id = COALESCE(?, business_id),
-            business_server_id = COALESCE(?, business_server_id),
-            name = COALESCE(?, name),
-            description = COALESCE(?, description),
-            category_id = COALESCE(?, category_id),
-            product_type = COALESCE(?, product_type),
-            has_variants = COALESCE(?, has_variants),
-            variant_type = COALESCE(?, variant_type),
-            base_barcode = COALESCE(?, base_barcode),
-            base_sku = COALESCE(?, base_sku),
-            base_cost_price = COALESCE(?, base_cost_price),
-            base_selling_price = COALESCE(?, base_selling_price),
-            base_wholesale_price = COALESCE(?, base_wholesale_price),
-            tax_id = COALESCE(?, tax_id),
-            tax_inclusive = COALESCE(?, tax_inclusive),
-            unit_of_measure = COALESCE(?, unit_of_measure),
-            reorder_level = COALESCE(?, reorder_level),
-            is_trackable = COALESCE(?, is_trackable),
-            image = COALESCE(?, image),
-            is_active = COALESCE(?, is_active),
-            updated_at = ?,
-            synced_at = ?,
-            sync_status = 'synced',
-            is_dirty = 0
-          WHERE id = ?`,
+          business_id = COALESCE(?, business_id),
+          business_server_id = COALESCE(?, business_server_id),
+          name = COALESCE(?, name),
+          description = COALESCE(?, description),
+          category_id = COALESCE(?, category_id),
+          product_type = COALESCE(?, product_type),
+          has_variants = COALESCE(?, has_variants),
+          variant_type = COALESCE(?, variant_type),
+          base_barcode = COALESCE(?, base_barcode),
+          base_sku = COALESCE(?, base_sku),
+          base_cost_price = COALESCE(?, base_cost_price),
+          base_selling_price = COALESCE(?, base_selling_price),
+          base_wholesale_price = COALESCE(?, base_wholesale_price),
+          tax_id = COALESCE(?, tax_id),
+          tax_inclusive = COALESCE(?, tax_inclusive),
+          unit_of_measure = COALESCE(?, unit_of_measure),
+          reorder_level = COALESCE(?, reorder_level),
+          is_trackable = COALESCE(?, is_trackable),
+          image = COALESCE(?, image),
+          is_active = COALESCE(?, is_active),
+          updated_at = ?,
+          synced_at = ?,
+          sync_status = 'synced',
+          is_dirty = 0
+        WHERE id = ?`,
           [
-            normalizedData.business_id ? ensureStringId(normalizedData.business_id) : null,
+            normalizedData.business_id
+              ? ensureStringId(normalizedData.business_id)
+              : null,
             normalizedData.business || normalizedData.business_server_id,
             normalizedData.name,
-            normalizedData.description || '',
-            normalizedData.category_id ? ensureStringId(normalizedData.category_id) : null,
-            normalizedData.product_type || 'physical',
+            normalizedData.description || "",
+            normalizedData.category_id
+              ? ensureStringId(normalizedData.category_id)
+              : null,
+            normalizedData.product_type || "physical",
             normalizedData.has_variants ? 1 : 0,
-            normalizedData.variant_type || 'none',
+            normalizedData.variant_type || "none",
             normalizedData.base_barcode,
             normalizedData.base_sku,
             normalizedData.base_cost_price,
             normalizedData.base_selling_price,
             normalizedData.base_wholesale_price,
-            normalizedData.tax_id ? ensureStringId(normalizedData.tax_id) : null,
+            normalizedData.tax_id
+              ? ensureStringId(normalizedData.tax_id)
+              : null,
             normalizedData.tax_inclusive !== false ? 1 : 0,
-            normalizedData.unit_of_measure || 'pcs',
+            normalizedData.unit_of_measure || "pcs",
             normalizedData.reorder_level || 10,
             normalizedData.is_trackable !== false ? 1 : 0,
             normalizedData.image,
@@ -4458,7 +4699,7 @@ export const ProductService = {
             now,
             now,
             existingProduct.id,
-          ]
+          ],
         );
 
         return { success: true, id: existingProduct.id, action: "updated" };
@@ -4469,48 +4710,58 @@ export const ProductService = {
         // Get business server_id if available
         let businessServerId = normalizedData.business;
         if (!businessServerId && normalizedData.business_id) {
-          const business = await BusinessService.getBusinessById(normalizedData.business_id);
+          const business = await BusinessService.getBusinessById(
+            normalizedData.business_id,
+          );
           businessServerId = business?.server_id || null;
         }
 
         await db.runAsync(
           `INSERT INTO products (
-            id, server_id, business_id, business_server_id, name, description, category_id,
-            product_type, has_variants, variant_type, base_barcode, base_sku,
-            base_cost_price, base_selling_price, base_wholesale_price, tax_id,
-            tax_inclusive, unit_of_measure, reorder_level, is_trackable, image,
-            is_active, created_by, created_at, updated_at, synced_at, sync_status, is_dirty
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          id, server_id, business_id, business_server_id, name, description, category_id,
+          product_type, has_variants, variant_type, base_barcode, base_sku,
+          base_cost_price, base_selling_price, base_wholesale_price, tax_id,
+          tax_inclusive, unit_of_measure, reorder_level, is_trackable, image,
+          is_active, created_by, created_at, updated_at, synced_at, sync_status, is_dirty
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             productId,
             normalizedData.server_id || normalizedData.id || null,
-            normalizedData.business_id ? ensureStringId(normalizedData.business_id) : null,
+            normalizedData.business_id
+              ? ensureStringId(normalizedData.business_id)
+              : null,
             businessServerId,
-            normalizedData.name || '',
-            normalizedData.description || '',
-            normalizedData.category_id ? ensureStringId(normalizedData.category_id) : null,
-            normalizedData.product_type || 'physical',
+            normalizedData.name || "",
+            normalizedData.description || "",
+            normalizedData.category_id
+              ? ensureStringId(normalizedData.category_id)
+              : null,
+            normalizedData.product_type || "physical",
             normalizedData.has_variants ? 1 : 0,
-            normalizedData.variant_type || 'none',
+            normalizedData.variant_type || "none",
             normalizedData.base_barcode || null,
             normalizedData.base_sku || null,
             normalizedData.base_cost_price || null,
             normalizedData.base_selling_price || null,
             normalizedData.base_wholesale_price || null,
-            normalizedData.tax_id ? ensureStringId(normalizedData.tax_id) : null,
+            normalizedData.tax_id
+              ? ensureStringId(normalizedData.tax_id)
+              : null,
             normalizedData.tax_inclusive !== false ? 1 : 0,
-            normalizedData.unit_of_measure || 'pcs',
+            normalizedData.unit_of_measure || "pcs",
             normalizedData.reorder_level || 10,
             normalizedData.is_trackable !== false ? 1 : 0,
             normalizedData.image || null,
             normalizedData.is_active !== false ? 1 : 0,
-            normalizedData.created_by ? ensureStringId(normalizedData.created_by) : null,
+            normalizedData.created_by
+              ? ensureStringId(normalizedData.created_by)
+              : null,
             normalizedData.created_at || now,
             now,
             now,
             "synced",
             0,
-          ]
+          ],
         );
 
         console.log(`✅ Synced product: ${normalizedData.name} from server`);
@@ -4519,6 +4770,295 @@ export const ProductService = {
     } catch (error) {
       console.error("Error syncing product from server:", error);
       return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get all active products for a shop with their current stock.
+   * - Simple products: current_stock directly in product object.
+   * - Variant products: product has 'variants' array, each with current_stock.
+   */
+  // Get all active products for a shop with current stock
+  getProductsWithInventoryForShop: async (shopId) => {
+    try {
+      const db = await openDatabase();
+
+      const shop = await db.getFirstAsync(
+        "SELECT business_id, business_server_id FROM shops WHERE id = ?",
+        [shopId],
+      );
+      if (!shop) throw new Error("Shop not found");
+
+      const businessCondition = shop.business_server_id
+        ? `(p.business_id = ? OR p.business_server_id = ?)`
+        : `p.business_id = ?`;
+      const businessParams = shop.business_server_id
+        ? [shop.business_id, shop.business_server_id]
+        : [shop.business_id];
+
+      const products = await db.getAllAsync(
+        `
+        SELECT 
+          p.id, p.server_id, p.name, p.description, p.category_id,
+          p.has_variants, p.variant_type, p.base_sku, p.base_barcode,
+          p.reorder_level, p.is_active,
+          (SELECT current_stock FROM inventory 
+           WHERE product_id = p.id AND shop_id = ? AND is_active = 1) as current_stock
+        FROM products p
+        WHERE p.is_active = 1 AND ${businessCondition}
+        ORDER BY p.name
+      `,
+        [shopId, ...businessParams],
+      );
+
+      for (const product of products) {
+        if (product.has_variants) {
+          const variants = await db.getAllAsync(
+            `
+            SELECT 
+              v.id, v.server_id, v.name, v.sku, v.barcode, v.is_default, v.is_active,
+              (SELECT current_stock FROM inventory 
+               WHERE variant_id = v.id AND shop_id = ? AND is_active = 1) as current_stock
+            FROM product_variants v
+            WHERE v.product_id = ? AND v.is_active = 1
+            ORDER BY v.is_default DESC, v.name
+          `,
+            [shopId, product.id],
+          );
+          product.variants = variants;
+        } else {
+          product.variants = [];
+        }
+      }
+
+      return products;
+    } catch (error) {
+      console.error("❌ Error in getProductsWithInventoryForShop:", error);
+      throw error;
+    }
+  },
+
+  // Save products and inventory from server response
+  saveProductsFromServer: async (serverProducts, shopId) => {
+    const db = await openDatabase();
+    await db.execAsync("BEGIN TRANSACTION");
+    try {
+      const shop = await db.getFirstAsync(
+        "SELECT id, business_id, business_server_id FROM shops WHERE id = ?",
+        [shopId],
+      );
+      if (!shop) throw new Error("Shop not found for sync");
+
+      for (const sp of serverProducts) {
+        const productId = sp.id;
+        const existingProduct = await db.getFirstAsync(
+          "SELECT id FROM products WHERE server_id = ?",
+          [productId],
+        );
+
+        const businessId = shop.business_id;
+        const businessServerId = sp.business_id;
+        const now = new Date().toISOString();
+
+        if (!existingProduct) {
+          await db.runAsync(
+            `
+            INSERT INTO products (
+              id, server_id, business_id, business_server_id, name, description,
+              category_id, product_type, has_variants, variant_type, base_barcode,
+              base_sku, base_cost_price, base_selling_price, base_wholesale_price,
+              tax_id, tax_inclusive, unit_of_measure, reorder_level, is_trackable,
+              is_active, created_at, updated_at, sync_status, is_dirty
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+            [
+              nanoid(),
+              productId,
+              businessId,
+              businessServerId,
+              sp.name,
+              sp.description || "",
+              sp.category_id,
+              sp.product_type,
+              sp.has_variants ? 1 : 0,
+              sp.variant_type || "none",
+              sp.base_barcode || null,
+              sp.base_sku || null,
+              sp.base_cost_price,
+              sp.base_selling_price,
+              sp.base_wholesale_price,
+              sp.tax_id,
+              sp.tax_inclusive ? 1 : 0,
+              sp.unit_of_measure || "pcs",
+              sp.reorder_level || 10,
+              sp.is_trackable ? 1 : 0,
+              sp.is_active ? 1 : 0,
+              sp.created_at,
+              sp.updated_at,
+              "synced",
+              0,
+            ],
+          );
+        } else {
+          await db.runAsync(
+            `
+            UPDATE products SET
+              name = ?, description = ?, category_id = ?, product_type = ?,
+              has_variants = ?, variant_type = ?, base_barcode = ?, base_sku = ?,
+              base_cost_price = ?, base_selling_price = ?, base_wholesale_price = ?,
+              tax_id = ?, tax_inclusive = ?, unit_of_measure = ?, reorder_level = ?,
+              is_trackable = ?, is_active = ?, updated_at = ?, sync_status = ?, is_dirty = 0
+            WHERE server_id = ?
+          `,
+            [
+              sp.name,
+              sp.description || "",
+              sp.category_id,
+              sp.product_type,
+              sp.has_variants ? 1 : 0,
+              sp.variant_type || "none",
+              sp.base_barcode || null,
+              sp.base_sku || null,
+              sp.base_cost_price,
+              sp.base_selling_price,
+              sp.base_wholesale_price,
+              sp.tax_id,
+              sp.tax_inclusive ? 1 : 0,
+              sp.unit_of_measure || "pcs",
+              sp.reorder_level || 10,
+              sp.is_trackable ? 1 : 0,
+              sp.is_active ? 1 : 0,
+              sp.updated_at,
+              "synced",
+              productId,
+            ],
+          );
+        }
+
+        if (sp.has_variants && sp.variants) {
+          for (const sv of sp.variants) {
+            const variantId = sv.id;
+            const existingVariant = await db.getFirstAsync(
+              "SELECT id FROM product_variants WHERE server_id = ?",
+              [variantId],
+            );
+
+            if (!existingVariant) {
+              await db.runAsync(
+                `
+                INSERT INTO product_variants (
+                  id, server_id, product_id, name, sku, barcode, cost_price,
+                  selling_price, wholesale_price, weight, dimensions,
+                  is_default, is_active, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `,
+                [
+                  nanoid(),
+                  variantId,
+                  productId,
+                  sv.name,
+                  sv.sku || null,
+                  sv.barcode || null,
+                  sv.cost_price,
+                  sv.selling_price,
+                  sv.wholesale_price,
+                  sv.weight,
+                  sv.dimensions,
+                  sv.is_default ? 1 : 0,
+                  sv.is_active ? 1 : 0,
+                  sv.created_at,
+                  sv.updated_at,
+                ],
+              );
+            } else {
+              await db.runAsync(
+                `
+                UPDATE product_variants SET
+                  name = ?, sku = ?, barcode = ?, cost_price = ?, selling_price = ?,
+                  wholesale_price = ?, weight = ?, dimensions = ?, is_default = ?,
+                  is_active = ?, updated_at = ?
+                WHERE server_id = ?
+              `,
+                [
+                  sv.name,
+                  sv.sku || null,
+                  sv.barcode || null,
+                  sv.cost_price,
+                  sv.selling_price,
+                  sv.wholesale_price,
+                  sv.weight,
+                  sv.dimensions,
+                  sv.is_default ? 1 : 0,
+                  sv.is_active ? 1 : 0,
+                  sv.updated_at,
+                  variantId,
+                ],
+              );
+            }
+
+            const currentStock = sv.inventory?.current_stock || 0;
+            await upsertInventory(
+              db,
+              null,
+              variantId,
+              shopId,
+              currentStock,
+              sp.reorder_level,
+            );
+          }
+        } else {
+          const currentStock = sp.inventory?.current_stock || 0;
+          await upsertInventory(
+            db,
+            productId,
+            null,
+            shopId,
+            currentStock,
+            sp.reorder_level,
+          );
+        }
+      }
+
+      await db.execAsync("COMMIT");
+      console.log("✅ Products saved from server");
+    } catch (error) {
+      await db.execAsync("ROLLBACK");
+      console.error("❌ Error saving products from server:", error);
+      throw error;
+    }
+  },
+
+  // Update inventory after a successful restock
+  updateInventory: async (productId, variantId, shopId, newStock) => {
+    try {
+      const db = await openDatabase();
+      const now = new Date().toISOString();
+
+      if (productId) {
+        await db.runAsync(
+          `
+          UPDATE inventory 
+          SET current_stock = ?, last_updated = ?, last_restocked = ? 
+          WHERE product_id = ? AND shop_id = ? AND is_active = 1
+        `,
+          [newStock, now, now, productId, shopId],
+        );
+      } else if (variantId) {
+        await db.runAsync(
+          `
+          UPDATE inventory 
+          SET current_stock = ?, last_updated = ?, last_restocked = ? 
+          WHERE variant_id = ? AND shop_id = ? AND is_active = 1
+        `,
+          [newStock, now, now, variantId, shopId],
+        );
+      } else {
+        throw new Error("Either productId or variantId must be provided");
+      }
+      console.log("✅ Inventory updated locally");
+    } catch (error) {
+      console.error("❌ Error updating inventory:", error);
+      throw error;
     }
   },
 };
@@ -4533,13 +5073,17 @@ export const ProductAttributeService = {
       const now = new Date().toISOString();
 
       // Check if user has access to the product's business
-      const product = await ProductService.getProductById(normalizedData.product_id, userId);
+      const product = await ProductService.getProductById(
+        normalizedData.product_id,
+        userId,
+      );
       if (!product) {
         throw new Error("Product not found or access denied");
       }
 
-      const attributeId = normalizedData.server_id || normalizedData.id || uuid.v4();
-      
+      const attributeId =
+        normalizedData.server_id || normalizedData.id || uuid.v4();
+
       // Check if attribute exists
       const existingAttribute = await db.getFirstAsync(
         "SELECT id FROM product_attributes WHERE server_id = ? OR (product_id = ? AND name = ?)",
@@ -4547,7 +5091,7 @@ export const ProductAttributeService = {
           normalizedData.server_id || normalizedData.id,
           ensureStringId(normalizedData.product_id),
           normalizedData.name,
-        ]
+        ],
       );
 
       if (existingAttribute) {
@@ -4569,7 +5113,7 @@ export const ProductAttributeService = {
             now,
             now,
             existingAttribute.id,
-          ]
+          ],
         );
         return { success: true, id: existingAttribute.id, action: "updated" };
       } else {
@@ -4591,7 +5135,7 @@ export const ProductAttributeService = {
             now,
             "synced",
             0,
-          ]
+          ],
         );
         return { success: true, id: attributeId, action: "created" };
       }
@@ -4620,7 +5164,7 @@ export const ProductAttributeService = {
          FROM product_attributes pa
          WHERE pa.product_id = ?
          ORDER BY pa.display_order, pa.name`,
-        [ensureStringId(productId)]
+        [ensureStringId(productId)],
       );
     } catch (error) {
       console.error("Error getting attributes by product:", error);
@@ -4643,7 +5187,7 @@ export const ProductAttributeValueService = {
         `SELECT pa.*, p.business_id FROM product_attributes pa
          JOIN products p ON pa.product_id = p.id
          WHERE pa.id = ?`,
-        [ensureStringId(normalizedData.attribute_id)]
+        [ensureStringId(normalizedData.attribute_id)],
       );
 
       if (!attribute) {
@@ -4651,16 +5195,22 @@ export const ProductAttributeValueService = {
       }
 
       // Check access to business
-      const hasAccess = await EmployeeService.checkUserBusinessAccess(userId, attribute.business_id);
+      const hasAccess = await EmployeeService.checkUserBusinessAccess(
+        userId,
+        attribute.business_id,
+      );
       if (!hasAccess) {
-        const business = await BusinessService.getBusinessById(attribute.business_id);
+        const business = await BusinessService.getBusinessById(
+          attribute.business_id,
+        );
         if (!business || business.owner_id !== userId) {
           throw new Error("Access denied");
         }
       }
 
-      const valueId = normalizedData.server_id || normalizedData.id || uuid.v4();
-      
+      const valueId =
+        normalizedData.server_id || normalizedData.id || uuid.v4();
+
       // Check if value exists
       const existingValue = await db.getFirstAsync(
         "SELECT id FROM product_attribute_values WHERE server_id = ? OR (attribute_id = ? AND value = ?)",
@@ -4668,7 +5218,7 @@ export const ProductAttributeValueService = {
           normalizedData.server_id || normalizedData.id,
           ensureStringId(normalizedData.attribute_id),
           normalizedData.value,
-        ]
+        ],
       );
 
       if (existingValue) {
@@ -4688,7 +5238,7 @@ export const ProductAttributeValueService = {
             now,
             now,
             existingValue.id,
-          ]
+          ],
         );
         return { success: true, id: existingValue.id, action: "updated" };
       } else {
@@ -4709,7 +5259,7 @@ export const ProductAttributeValueService = {
             now,
             "synced",
             0,
-          ]
+          ],
         );
         return { success: true, id: valueId, action: "created" };
       }
@@ -4730,13 +5280,17 @@ export const ProductVariantService = {
       const now = new Date().toISOString();
 
       // Check if user has access to the product's business
-      const product = await ProductService.getProductById(normalizedData.product_id, userId);
+      const product = await ProductService.getProductById(
+        normalizedData.product_id,
+        userId,
+      );
       if (!product) {
         throw new Error("Product not found or access denied");
       }
 
-      const variantId = normalizedData.server_id || normalizedData.id || uuid.v4();
-      
+      const variantId =
+        normalizedData.server_id || normalizedData.id || uuid.v4();
+
       // Check if variant exists
       const existingVariant = await db.getFirstAsync(
         "SELECT id FROM product_variants WHERE server_id = ? OR (product_id = ? AND (sku = ? OR barcode = ? OR name = ?))",
@@ -4746,7 +5300,7 @@ export const ProductVariantService = {
           normalizedData.sku,
           normalizedData.barcode,
           normalizedData.name,
-        ]
+        ],
       );
 
       if (existingVariant) {
@@ -4784,7 +5338,7 @@ export const ProductVariantService = {
             now,
             now,
             existingVariant.id,
-          ]
+          ],
         );
         return { success: true, id: existingVariant.id, action: "updated" };
       } else {
@@ -4816,7 +5370,7 @@ export const ProductVariantService = {
             now,
             "synced",
             0,
-          ]
+          ],
         );
         return { success: true, id: variantId, action: "created" };
       }
@@ -4843,7 +5397,7 @@ export const ProductVariantService = {
          FROM product_variants v
          WHERE v.product_id = ? AND v.is_active = 1
          ORDER BY v.is_default DESC, v.name`,
-        [ensureStringId(productId)]
+        [ensureStringId(productId)],
       );
     } catch (error) {
       console.error("Error getting variants by product:", error);
@@ -4863,10 +5417,13 @@ export const StockMovementService = {
       const now = new Date().toISOString();
 
       // Validate required fields
-      if (!normalizedData.inventory_id) throw new Error("inventory_id is required");
+      if (!normalizedData.inventory_id)
+        throw new Error("inventory_id is required");
       if (!normalizedData.shop_id) throw new Error("shop_id is required");
-      if (!normalizedData.movement_type) throw new Error("movement_type is required");
-      if (normalizedData.quantity === undefined) throw new Error("quantity is required");
+      if (!normalizedData.movement_type)
+        throw new Error("movement_type is required");
+      if (normalizedData.quantity === undefined)
+        throw new Error("quantity is required");
 
       await db.runAsync(
         `INSERT INTO stock_movements (
@@ -4879,18 +5436,24 @@ export const StockMovementService = {
           normalizedData.server_id || null,
           ensureStringId(normalizedData.inventory_id),
           ensureStringId(normalizedData.shop_id),
-          normalizedData.product_id ? ensureStringId(normalizedData.product_id) : null,
-          normalizedData.variant_id ? ensureStringId(normalizedData.variant_id) : null,
+          normalizedData.product_id
+            ? ensureStringId(normalizedData.product_id)
+            : null,
+          normalizedData.variant_id
+            ? ensureStringId(normalizedData.variant_id)
+            : null,
           normalizedData.movement_type,
           normalizedData.quantity,
           normalizedData.reference || null,
           normalizedData.reason || null,
-          normalizedData.performed_by ? ensureStringId(normalizedData.performed_by) : null,
+          normalizedData.performed_by
+            ? ensureStringId(normalizedData.performed_by)
+            : null,
           normalizedData.created_at || now,
           now,
           "pending",
           1,
-        ]
+        ],
       );
 
       return { success: true, id: movementId };
@@ -4911,7 +5474,7 @@ export const StockMovementService = {
          WHERE sm.inventory_id = ?
          ORDER BY sm.created_at DESC
          LIMIT ?`,
-        [ensureStringId(inventoryId), limit]
+        [ensureStringId(inventoryId), limit],
       );
     } catch (error) {
       console.error("Error getting stock movements by inventory:", error);
@@ -4933,7 +5496,7 @@ export const StockMovementService = {
          WHERE sm.shop_id = ?
          ORDER BY sm.created_at DESC
          LIMIT ?`,
-        [ensureStringId(shopId), limit]
+        [ensureStringId(shopId), limit],
       );
     } catch (error) {
       console.error("Error getting stock movements by shop:", error);
@@ -4946,7 +5509,7 @@ export const StockMovementService = {
     try {
       const db = await openDatabase();
       return await db.getAllAsync(
-        'SELECT * FROM stock_movements WHERE is_dirty = 1 OR sync_status = "pending"'
+        'SELECT * FROM stock_movements WHERE is_dirty = 1 OR sync_status = "pending"',
       );
     } catch (error) {
       console.error("Error getting pending sync movements:", error);
@@ -4956,7 +5519,7 @@ export const StockMovementService = {
 
   // Mark movement as synced
   markAsSynced: async (localId, serverId) => {
-    return BaseService.markAsSynced('stock_movements', localId, serverId);
+    return BaseService.markAsSynced("stock_movements", localId, serverId);
   },
 };
 
@@ -4983,9 +5546,14 @@ export const InventoryService = {
         throw new Error("Shop not found");
       }
 
-      const hasAccess = await EmployeeService.checkUserBusinessAccess(userId, shop.business_id);
+      const hasAccess = await EmployeeService.checkUserBusinessAccess(
+        userId,
+        shop.business_id,
+      );
       if (!hasAccess) {
-        const business = await BusinessService.getBusinessById(shop.business_id);
+        const business = await BusinessService.getBusinessById(
+          shop.business_id,
+        );
         if (!business || business.owner_id !== userId) {
           throw new Error("Access denied to shop's business");
         }
@@ -4999,7 +5567,7 @@ export const InventoryService = {
           [
             ensureStringId(normalizedData.product_id),
             ensureStringId(normalizedData.shop_id),
-          ]
+          ],
         );
       } else {
         existing = await db.getFirstAsync(
@@ -5007,7 +5575,7 @@ export const InventoryService = {
           [
             ensureStringId(normalizedData.variant_id),
             ensureStringId(normalizedData.shop_id),
-          ]
+          ],
         );
       }
 
@@ -5027,16 +5595,28 @@ export const InventoryService = {
             is_dirty = 1
           WHERE id = ?`,
           [
-            normalizedData.current_stock !== undefined ? normalizedData.current_stock : null,
-            normalizedData.reserved_stock !== undefined ? normalizedData.reserved_stock : null,
-            normalizedData.minimum_stock !== undefined ? normalizedData.minimum_stock : null,
-            normalizedData.maximum_stock !== undefined ? normalizedData.maximum_stock : null,
+            normalizedData.current_stock !== undefined
+              ? normalizedData.current_stock
+              : null,
+            normalizedData.reserved_stock !== undefined
+              ? normalizedData.reserved_stock
+              : null,
+            normalizedData.minimum_stock !== undefined
+              ? normalizedData.minimum_stock
+              : null,
+            normalizedData.maximum_stock !== undefined
+              ? normalizedData.maximum_stock
+              : null,
             normalizedData.last_restocked || now,
             normalizedData.last_movement || now,
-            normalizedData.is_locked !== undefined ? (normalizedData.is_locked ? 1 : 0) : 0,
+            normalizedData.is_locked !== undefined
+              ? normalizedData.is_locked
+                ? 1
+                : 0
+              : 0,
             now,
             existing.id,
-          ]
+          ],
         );
         return { success: true, id: existing.id, action: "updated" };
       } else {
@@ -5052,22 +5632,38 @@ export const InventoryService = {
           [
             inventoryId,
             normalizedData.server_id || null,
-            normalizedData.product_id ? ensureStringId(normalizedData.product_id) : null,
-            normalizedData.variant_id ? ensureStringId(normalizedData.variant_id) : null,
+            normalizedData.product_id
+              ? ensureStringId(normalizedData.product_id)
+              : null,
+            normalizedData.variant_id
+              ? ensureStringId(normalizedData.variant_id)
+              : null,
             ensureStringId(normalizedData.shop_id),
-            normalizedData.current_stock !== undefined ? normalizedData.current_stock : 0,
-            normalizedData.reserved_stock !== undefined ? normalizedData.reserved_stock : 0,
-            normalizedData.minimum_stock !== undefined ? normalizedData.minimum_stock : 0,
-            normalizedData.maximum_stock !== undefined ? normalizedData.maximum_stock : null,
+            normalizedData.current_stock !== undefined
+              ? normalizedData.current_stock
+              : 0,
+            normalizedData.reserved_stock !== undefined
+              ? normalizedData.reserved_stock
+              : 0,
+            normalizedData.minimum_stock !== undefined
+              ? normalizedData.minimum_stock
+              : 0,
+            normalizedData.maximum_stock !== undefined
+              ? normalizedData.maximum_stock
+              : null,
             normalizedData.last_restocked || now,
             normalizedData.last_movement || now,
-            normalizedData.is_locked !== undefined ? (normalizedData.is_locked ? 1 : 0) : 0,
+            normalizedData.is_locked !== undefined
+              ? normalizedData.is_locked
+                ? 1
+                : 0
+              : 0,
             1,
             now,
             now,
             "pending",
             1,
-          ]
+          ],
         );
         return { success: true, id: inventoryId, action: "created" };
       }
@@ -5078,7 +5674,13 @@ export const InventoryService = {
   },
 
   // Stock in (restock)
-  stockIn: async (inventoryId, quantity, userId, reason = null, reference = null) => {
+  stockIn: async (
+    inventoryId,
+    quantity,
+    userId,
+    reason = null,
+    reference = null,
+  ) => {
     const db = await openDatabase();
     const now = new Date().toISOString();
 
@@ -5089,7 +5691,7 @@ export const InventoryService = {
     // Get inventory record with lock
     const inventory = await db.getFirstAsync(
       "SELECT * FROM inventory WHERE id = ? FOR UPDATE",
-      [ensureStringId(inventoryId)]
+      [ensureStringId(inventoryId)],
     );
     if (!inventory) throw new Error("Inventory not found");
     if (inventory.is_locked) throw new Error("Inventory is locked");
@@ -5106,7 +5708,7 @@ export const InventoryService = {
         sync_status = 'pending',
         is_dirty = 1
       WHERE id = ?`,
-      [newStock, now, now, now, inventoryId]
+      [newStock, now, now, now, inventoryId],
     );
 
     // Create movement record
@@ -5115,7 +5717,7 @@ export const InventoryService = {
       shop_id: inventory.shop_id,
       product_id: inventory.product_id,
       variant_id: inventory.variant_id,
-      movement_type: 'in',
+      movement_type: "in",
       quantity: quantity,
       reason: reason,
       reference: reference,
@@ -5141,7 +5743,7 @@ export const InventoryService = {
     // Get inventory with lock
     const inventory = await db.getFirstAsync(
       "SELECT * FROM inventory WHERE id = ? FOR UPDATE",
-      [ensureStringId(inventoryId)]
+      [ensureStringId(inventoryId)],
     );
     if (!inventory) throw new Error("Inventory not found");
     if (inventory.is_locked) throw new Error("Inventory is locked");
@@ -5162,7 +5764,7 @@ export const InventoryService = {
         sync_status = 'pending',
         is_dirty = 1
       WHERE id = ?`,
-      [newStock, now, now, inventoryId]
+      [newStock, now, now, inventoryId],
     );
 
     // Create movement record
@@ -5171,7 +5773,7 @@ export const InventoryService = {
       shop_id: inventory.shop_id,
       product_id: inventory.product_id,
       variant_id: inventory.variant_id,
-      movement_type: 'out',
+      movement_type: "out",
       quantity: -quantity,
       reason: reason,
       performed_by: userId,
@@ -5192,7 +5794,7 @@ export const InventoryService = {
     // Get inventory with lock
     const inventory = await db.getFirstAsync(
       "SELECT * FROM inventory WHERE id = ? FOR UPDATE",
-      [ensureStringId(inventoryId)]
+      [ensureStringId(inventoryId)],
     );
     if (!inventory) throw new Error("Inventory not found");
     if (inventory.is_locked) throw new Error("Inventory is locked");
@@ -5208,7 +5810,7 @@ export const InventoryService = {
         sync_status = 'pending',
         is_dirty = 1
       WHERE id = ?`,
-      [newQuantity, now, now, inventoryId]
+      [newQuantity, now, now, inventoryId],
     );
 
     // Create movement record
@@ -5217,7 +5819,7 @@ export const InventoryService = {
       shop_id: inventory.shop_id,
       product_id: inventory.product_id,
       variant_id: inventory.variant_id,
-      movement_type: 'adjustment',
+      movement_type: "adjustment",
       quantity: difference,
       reason: reason,
       performed_by: userId,
@@ -5242,7 +5844,7 @@ export const InventoryService = {
     // Get inventory with lock
     const inventory = await db.getFirstAsync(
       "SELECT * FROM inventory WHERE id = ? FOR UPDATE",
-      [ensureStringId(inventoryId)]
+      [ensureStringId(inventoryId)],
     );
     if (!inventory) throw new Error("Inventory not found");
     if (inventory.is_locked) throw new Error("Inventory is locked");
@@ -5263,7 +5865,7 @@ export const InventoryService = {
         sync_status = 'pending',
         is_dirty = 1
       WHERE id = ?`,
-      [newStock, now, now, inventoryId]
+      [newStock, now, now, inventoryId],
     );
 
     // Create movement record
@@ -5272,7 +5874,7 @@ export const InventoryService = {
       shop_id: inventory.shop_id,
       product_id: inventory.product_id,
       variant_id: inventory.variant_id,
-      movement_type: 'sale',
+      movement_type: "sale",
       quantity: -quantity,
       reference: saleId,
       performed_by: userId,
@@ -5297,7 +5899,7 @@ export const InventoryService = {
     // Get inventory with lock
     const inventory = await db.getFirstAsync(
       "SELECT * FROM inventory WHERE id = ? FOR UPDATE",
-      [ensureStringId(inventoryId)]
+      [ensureStringId(inventoryId)],
     );
     if (!inventory) throw new Error("Inventory not found");
     if (inventory.is_locked) throw new Error("Inventory is locked");
@@ -5313,7 +5915,7 @@ export const InventoryService = {
         sync_status = 'pending',
         is_dirty = 1
       WHERE id = ?`,
-      [newStock, now, now, inventoryId]
+      [newStock, now, now, inventoryId],
     );
 
     // Create movement record
@@ -5322,7 +5924,7 @@ export const InventoryService = {
       shop_id: inventory.shop_id,
       product_id: inventory.product_id,
       variant_id: inventory.variant_id,
-      movement_type: 'return',
+      movement_type: "return",
       quantity: quantity,
       reference: saleId,
       reason: reason,
@@ -5342,7 +5944,7 @@ export const InventoryService = {
     const now = new Date().toISOString();
     await db.runAsync(
       `UPDATE inventory SET is_locked = 1, updated_at = ? WHERE id = ?`,
-      [now, ensureStringId(inventoryId)]
+      [now, ensureStringId(inventoryId)],
     );
     return { success: true };
   },
@@ -5353,7 +5955,7 @@ export const InventoryService = {
     const now = new Date().toISOString();
     await db.runAsync(
       `UPDATE inventory SET is_locked = 0, updated_at = ? WHERE id = ?`,
-      [now, ensureStringId(inventoryId)]
+      [now, ensureStringId(inventoryId)],
     );
     return { success: true };
   },
@@ -5369,9 +5971,14 @@ export const InventoryService = {
         return [];
       }
 
-      const hasAccess = await EmployeeService.checkUserBusinessAccess(userId, shop.business_id);
+      const hasAccess = await EmployeeService.checkUserBusinessAccess(
+        userId,
+        shop.business_id,
+      );
       if (!hasAccess) {
-        const business = await BusinessService.getBusinessById(shop.business_id);
+        const business = await BusinessService.getBusinessById(
+          shop.business_id,
+        );
         if (!business || business.owner_id !== userId) {
           return [];
         }
@@ -5392,7 +5999,7 @@ export const InventoryService = {
          LEFT JOIN product_variants v ON i.variant_id = v.id
          WHERE i.shop_id = ? AND i.is_active = 1
          ORDER BY item_name`,
-        [ensureStringId(shopId)]
+        [ensureStringId(shopId)],
       );
     } catch (error) {
       console.error("Error getting inventory by shop:", error);
@@ -5411,9 +6018,14 @@ export const InventoryService = {
         return [];
       }
 
-      const hasAccess = await EmployeeService.checkUserBusinessAccess(userId, shop.business_id);
+      const hasAccess = await EmployeeService.checkUserBusinessAccess(
+        userId,
+        shop.business_id,
+      );
       if (!hasAccess) {
-        const business = await BusinessService.getBusinessById(shop.business_id);
+        const business = await BusinessService.getBusinessById(
+          shop.business_id,
+        );
         if (!business || business.owner_id !== userId) {
           return [];
         }
@@ -5431,7 +6043,7 @@ export const InventoryService = {
          WHERE i.shop_id = ? AND i.is_active = 1
          AND i.current_stock <= i.minimum_stock
          ORDER BY i.current_stock ASC`,
-        [ensureStringId(shopId)]
+        [ensureStringId(shopId)],
       );
     } catch (error) {
       console.error("Error getting low stock items:", error);
@@ -5463,17 +6075,23 @@ export const PriceHistoryService = {
         [
           historyId,
           normalizedData.server_id || null,
-          normalizedData.product_id ? ensureStringId(normalizedData.product_id) : null,
-          normalizedData.variant_id ? ensureStringId(normalizedData.variant_id) : null,
+          normalizedData.product_id
+            ? ensureStringId(normalizedData.product_id)
+            : null,
+          normalizedData.variant_id
+            ? ensureStringId(normalizedData.variant_id)
+            : null,
           normalizedData.old_price || 0.0,
           normalizedData.new_price || 0.0,
-          normalizedData.price_type || 'selling',
-          normalizedData.change_reason || '',
-          normalizedData.changed_by ? ensureStringId(normalizedData.changed_by) : null,
+          normalizedData.price_type || "selling",
+          normalizedData.change_reason || "",
+          normalizedData.changed_by
+            ? ensureStringId(normalizedData.changed_by)
+            : null,
           normalizedData.changed_at || now,
-          'pending',
+          "pending",
           1,
-        ]
+        ],
       );
 
       return { success: true, id: historyId };
@@ -5484,13 +6102,13 @@ export const PriceHistoryService = {
   },
 
   // Get price history by product or variant
-  getPriceHistory: async (itemId, itemType = 'product', userId) => {
+  getPriceHistory: async (itemId, itemType = "product", userId) => {
     try {
       const db = await openDatabase();
 
       // Determine which table to check based on itemType
       let businessId = null;
-      if (itemType === 'product') {
+      if (itemType === "product") {
         const product = await ProductService.getProductById(itemId, userId);
         if (!product) return [];
         businessId = product.business_id;
@@ -5501,14 +6119,19 @@ export const PriceHistoryService = {
            FROM product_variants v
            JOIN products p ON v.product_id = p.id
            WHERE v.id = ?`,
-          [ensureStringId(itemId)]
+          [ensureStringId(itemId)],
         );
         if (!variant) return [];
-        
+
         // Check access to business
-        const hasAccess = await EmployeeService.checkUserBusinessAccess(userId, variant.business_id);
+        const hasAccess = await EmployeeService.checkUserBusinessAccess(
+          userId,
+          variant.business_id,
+        );
         if (!hasAccess) {
-          const business = await BusinessService.getBusinessById(variant.business_id);
+          const business = await BusinessService.getBusinessById(
+            variant.business_id,
+          );
           if (!business || business.owner_id !== userId) {
             return [];
           }
@@ -5518,8 +6141,8 @@ export const PriceHistoryService = {
 
       let whereClause = "";
       let params = [];
-      
-      if (itemType === 'product') {
+
+      if (itemType === "product") {
         whereClause = "ph.product_id = ?";
         params = [ensureStringId(itemId)];
       } else {
@@ -5534,7 +6157,7 @@ export const PriceHistoryService = {
          WHERE ${whereClause}
          ORDER BY ph.changed_at DESC
          LIMIT 50`,
-        params
+        params,
       );
     } catch (error) {
       console.error("Error getting price history:", error);
@@ -5575,7 +6198,7 @@ export const CustomerService = {
           now,
           "pending",
           1,
-        ]
+        ],
       );
 
       return { success: true, id: customerId };
@@ -5591,7 +6214,7 @@ export const CustomerService = {
       const db = await openDatabase();
       return await db.getAllAsync(
         "SELECT * FROM customers WHERE business_id = ? AND is_active = 1 ORDER BY name",
-        [ensureStringId(businessId)]
+        [ensureStringId(businessId)],
       );
     } catch (error) {
       console.error("Error getting customers by business:", error);
@@ -5608,7 +6231,7 @@ export const CustomerService = {
          WHERE business_id = ? AND is_active = 1
          AND (name LIKE ? OR phone_number LIKE ? OR email LIKE ?)
          ORDER BY name`,
-        [ensureStringId(businessId), `%${query}%`, `%${query}%`, `%${query}%`]
+        [ensureStringId(businessId), `%${query}%`, `%${query}%`, `%${query}%`],
       );
     } catch (error) {
       console.error("Error searching customers:", error);
@@ -5648,7 +6271,7 @@ export const CustomerService = {
 
       await db.runAsync(
         `UPDATE customers SET ${setClause}, updated_at = ?, sync_status = 'pending', is_dirty = 1 WHERE id = ?`,
-        [...values, now, customerIdStr]
+        [...values, now, customerIdStr],
       );
 
       return { success: true };
@@ -5663,7 +6286,7 @@ export const CustomerService = {
     try {
       const db = await openDatabase();
       return await db.getAllAsync(
-        'SELECT * FROM customers WHERE is_dirty = 1 OR sync_status = "pending"'
+        'SELECT * FROM customers WHERE is_dirty = 1 OR sync_status = "pending"',
       );
     } catch (error) {
       console.error("Error getting pending sync customers:", error);
@@ -5684,7 +6307,7 @@ export const SaleService = {
 
       // Generate receipt number
       const receiptNumber = `RCPT-${Date.now()}-${Math.floor(
-        Math.random() * 1000
+        Math.random() * 1000,
       )}`;
 
       await db.runAsync(
@@ -5714,7 +6337,7 @@ export const SaleService = {
           now,
           "pending",
           1,
-        ]
+        ],
       );
 
       return { success: true, id: saleId, receipt_number: receiptNumber };
@@ -5735,7 +6358,7 @@ export const SaleService = {
          WHERE s.shop_id = ?
          ORDER BY s.sale_date DESC
          LIMIT ?`,
-        [ensureStringId(shopId), limit]
+        [ensureStringId(shopId), limit],
       );
     } catch (error) {
       console.error("Error getting sales by shop:", error);
@@ -5770,7 +6393,7 @@ export const SaleService = {
           sync_status = 'pending',
           is_dirty = 1
         WHERE id = ?`,
-        [now, now, ensureStringId(saleId)]
+        [now, now, ensureStringId(saleId)],
       );
 
       return { success: true };
@@ -5796,7 +6419,7 @@ export const SaleService = {
          WHERE shop_id = ? 
          AND DATE(sale_date) = ?
          AND status = 'completed'`,
-        [ensureStringId(shopId), targetDate]
+        [ensureStringId(shopId), targetDate],
       );
     } catch (error) {
       console.error("Error getting daily sales summary:", error);
@@ -5809,7 +6432,7 @@ export const SaleService = {
     try {
       const db = await openDatabase();
       return await db.getAllAsync(
-        'SELECT * FROM sales WHERE is_dirty = 1 OR sync_status = "pending"'
+        'SELECT * FROM sales WHERE is_dirty = 1 OR sync_status = "pending"',
       );
     } catch (error) {
       console.error("Error getting pending sync sales:", error);
@@ -5841,7 +6464,7 @@ export const PaymentService = {
           normalizedData.status || "completed",
           normalizedData.transaction_id || null,
           normalizedData.paid_at || now,
-        ]
+        ],
       );
 
       return { success: true, id: paymentId };
@@ -5857,7 +6480,7 @@ export const PaymentService = {
       const db = await openDatabase();
       return await db.getAllAsync(
         "SELECT * FROM payments WHERE sale_id = ? ORDER BY paid_at DESC",
-        [ensureStringId(saleId)]
+        [ensureStringId(saleId)],
       );
     } catch (error) {
       console.error("Error getting payments by sale:", error);
@@ -5890,7 +6513,7 @@ export const SyncLogService = {
           logData.end_time || null,
           logData.error_message || null,
           now,
-        ]
+        ],
       );
 
       return { success: true, id: logId };
@@ -5928,7 +6551,7 @@ export const SyncLogService = {
       const db = await openDatabase();
       return await db.getAllAsync(
         "SELECT * FROM sync_logs ORDER BY created_at DESC LIMIT ?",
-        [limit]
+        [limit],
       );
     } catch (error) {
       console.error("Error getting recent sync logs:", error);
@@ -5945,7 +6568,7 @@ export const SettingsService = {
       const db = await openDatabase();
       const setting = await db.getFirstAsync(
         "SELECT * FROM app_settings WHERE user_id = ? AND key = ?",
-        [ensureStringId(userId), key]
+        [ensureStringId(userId), key],
       );
       return setting ? setting.value : null;
     } catch (error) {
@@ -5964,18 +6587,18 @@ export const SettingsService = {
       // Check if setting exists
       const existing = await db.getFirstAsync(
         "SELECT id FROM app_settings WHERE user_id = ? AND key = ?",
-        [ensureStringId(userId), key]
+        [ensureStringId(userId), key],
       );
 
       if (existing) {
         await db.runAsync(
           "UPDATE app_settings SET value = ?, updated_at = ? WHERE user_id = ? AND key = ?",
-          [value, now, ensureStringId(userId), key]
+          [value, now, ensureStringId(userId), key],
         );
       } else {
         await db.runAsync(
           "INSERT INTO app_settings (id, user_id, key, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-          [settingId, ensureStringId(userId), key, value, now, now]
+          [settingId, ensureStringId(userId), key, value, now, now],
         );
       }
 
@@ -5992,7 +6615,7 @@ export const SettingsService = {
       const db = await openDatabase();
       const settings = await db.getAllAsync(
         "SELECT * FROM app_settings WHERE user_id = ?",
-        [ensureStringId(userId)]
+        [ensureStringId(userId)],
       );
 
       // Convert to object
@@ -6011,24 +6634,24 @@ export const SettingsService = {
 export const cleanupDuplicateEmployees = async () => {
   try {
     const db = await openDatabase();
-    console.log('🧹 Cleaning duplicate employees...');
-    
+    console.log("🧹 Cleaning duplicate employees...");
+
     // Step 1: Find and fix employees without local ID
     const nullIdEmployees = await db.getAllAsync(
-      'SELECT ROWID as sqlite_rowid, * FROM employees WHERE id IS NULL OR id = ""'
+      'SELECT ROWID as sqlite_rowid, * FROM employees WHERE id IS NULL OR id = ""',
     );
-    
+
     console.log(`Found ${nullIdEmployees.length} employees without local ID`);
-    
+
     for (const employee of nullIdEmployees) {
       const newId = nanoid();
-      await db.runAsync(
-        'UPDATE employees SET id = ? WHERE ROWID = ?',
-        [newId, employee.sqlite_rowid]
-      );
+      await db.runAsync("UPDATE employees SET id = ? WHERE ROWID = ?", [
+        newId,
+        employee.sqlite_rowid,
+      ]);
       console.log(`✅ Assigned ID ${newId} to employee ${employee.email}`);
     }
-    
+
     // Step 2: Find duplicate employees by server_id
     const serverIdDuplicates = await db.getAllAsync(`
       SELECT server_id, COUNT(*) as count
@@ -6037,32 +6660,41 @@ export const cleanupDuplicateEmployees = async () => {
       GROUP BY server_id 
       HAVING count > 1
     `);
-    
-    console.log(`Found ${serverIdDuplicates.length} duplicate employee groups by server_id`);
-    
+
+    console.log(
+      `Found ${serverIdDuplicates.length} duplicate employee groups by server_id`,
+    );
+
     for (const dup of serverIdDuplicates) {
       if (!dup.server_id) continue;
-      
+
       // Get all duplicates for this server_id, ordered by updated_at (keep newest)
-      const duplicates = await db.getAllAsync(`
+      const duplicates = await db.getAllAsync(
+        `
         SELECT ROWID as sqlite_rowid, id, server_id, email, updated_at
         FROM employees 
         WHERE server_id = ?
         ORDER BY updated_at DESC
-      `, [dup.server_id]);
-      
+      `,
+        [dup.server_id],
+      );
+
       // Keep first (most recent), delete rest
       if (duplicates.length > 1) {
         const keepId = duplicates[0].id;
         console.log(`🔄 Keeping employee ${keepId} (most recent)`);
-        
+
         for (let i = 1; i < duplicates.length; i++) {
-          await db.runAsync('DELETE FROM employees WHERE ROWID = ?', [duplicates[i].sqlite_rowid]);
-          console.log(`🗑️ Deleted duplicate employee ROWID: ${duplicates[i].sqlite_rowid}, email: ${duplicates[i].email}`);
+          await db.runAsync("DELETE FROM employees WHERE ROWID = ?", [
+            duplicates[i].sqlite_rowid,
+          ]);
+          console.log(
+            `🗑️ Deleted duplicate employee ROWID: ${duplicates[i].sqlite_rowid}, email: ${duplicates[i].email}`,
+          );
         }
       }
     }
-    
+
     // Step 3: Find duplicate employees by email and business_id
     const emailDuplicates = await db.getAllAsync(`
       SELECT email, business_id, COUNT(*) as count
@@ -6071,32 +6703,43 @@ export const cleanupDuplicateEmployees = async () => {
       GROUP BY email, business_id 
       HAVING count > 1
     `);
-    
-    console.log(`Found ${emailDuplicates.length} duplicate employee groups by email+business`);
-    
+
+    console.log(
+      `Found ${emailDuplicates.length} duplicate employee groups by email+business`,
+    );
+
     for (const dup of emailDuplicates) {
       if (!dup.email || !dup.business_id) continue;
-      
+
       // Get all duplicates for this email+business, ordered by updated_at (keep newest)
-      const duplicates = await db.getAllAsync(`
+      const duplicates = await db.getAllAsync(
+        `
         SELECT ROWID as sqlite_rowid, id, email, business_id, updated_at
         FROM employees 
         WHERE email = ? AND business_id = ?
         ORDER BY updated_at DESC
-      `, [dup.email, dup.business_id]);
-      
+      `,
+        [dup.email, dup.business_id],
+      );
+
       // Keep first (most recent), delete rest
       if (duplicates.length > 1) {
         const keepId = duplicates[0].id;
-        console.log(`🔄 Keeping employee ${keepId} for ${dup.email} (most recent)`);
-        
+        console.log(
+          `🔄 Keeping employee ${keepId} for ${dup.email} (most recent)`,
+        );
+
         for (let i = 1; i < duplicates.length; i++) {
-          await db.runAsync('DELETE FROM employees WHERE ROWID = ?', [duplicates[i].sqlite_rowid]);
-          console.log(`🗑️ Deleted duplicate employee ROWID: ${duplicates[i].sqlite_rowid}, email: ${duplicates[i].email}`);
+          await db.runAsync("DELETE FROM employees WHERE ROWID = ?", [
+            duplicates[i].sqlite_rowid,
+          ]);
+          console.log(
+            `🗑️ Deleted duplicate employee ROWID: ${duplicates[i].sqlite_rowid}, email: ${duplicates[i].email}`,
+          );
         }
       }
     }
-    
+
     // Step 4: Clean up any remaining duplicates
     const remainingDuplicates = await db.getAllAsync(`
       SELECT user_id, business_id, COUNT(*) as count
@@ -6105,74 +6748,92 @@ export const cleanupDuplicateEmployees = async () => {
       GROUP BY user_id, business_id 
       HAVING count > 1
     `);
-    
-    console.log(`Found ${remainingDuplicates.length} remaining duplicate employee groups`);
-    
+
+    console.log(
+      `Found ${remainingDuplicates.length} remaining duplicate employee groups`,
+    );
+
     for (const dup of remainingDuplicates) {
       if (!dup.user_id || !dup.business_id) continue;
-      
-      const duplicates = await db.getAllAsync(`
+
+      const duplicates = await db.getAllAsync(
+        `
         SELECT ROWID as sqlite_rowid, id, user_id, business_id, updated_at
         FROM employees 
         WHERE user_id = ? AND business_id = ?
         ORDER BY updated_at DESC
-      `, [dup.user_id, dup.business_id]);
-      
+      `,
+        [dup.user_id, dup.business_id],
+      );
+
       if (duplicates.length > 1) {
         for (let i = 1; i < duplicates.length; i++) {
-          await db.runAsync('DELETE FROM employees WHERE ROWID = ?', [duplicates[i].sqlite_rowid]);
-          console.log(`🗑️ Deleted duplicate employee ROWID: ${duplicates[i].sqlite_rowid}`);
+          await db.runAsync("DELETE FROM employees WHERE ROWID = ?", [
+            duplicates[i].sqlite_rowid,
+          ]);
+          console.log(
+            `🗑️ Deleted duplicate employee ROWID: ${duplicates[i].sqlite_rowid}`,
+          );
         }
       }
     }
-    
+
     // Step 5: Add UNIQUE constraints if they don't exist
     try {
-      const indexes = await db.getAllAsync("SELECT name FROM sqlite_master WHERE type = 'index'");
-      const indexNames = indexes.map(idx => idx.name);
-      
-      if (!indexNames.includes('idx_employees_server_id')) {
+      const indexes = await db.getAllAsync(
+        "SELECT name FROM sqlite_master WHERE type = 'index'",
+      );
+      const indexNames = indexes.map((idx) => idx.name);
+
+      if (!indexNames.includes("idx_employees_server_id")) {
         await db.execAsync(`
           CREATE UNIQUE INDEX idx_employees_server_id 
           ON employees(server_id) 
           WHERE server_id IS NOT NULL AND server_id != ''
         `);
-        console.log('✅ Created unique index on server_id');
+        console.log("✅ Created unique index on server_id");
       }
-      
-      if (!indexNames.includes('idx_employees_user_business')) {
+
+      if (!indexNames.includes("idx_employees_user_business")) {
         await db.execAsync(`
           CREATE UNIQUE INDEX idx_employees_user_business 
           ON employees(user_id, business_id) 
           WHERE user_id IS NOT NULL AND business_id IS NOT NULL
         `);
-        console.log('✅ Created unique index on user_id+business_id');
+        console.log("✅ Created unique index on user_id+business_id");
       }
-      
-      if (!indexNames.includes('idx_employees_email_business')) {
+
+      if (!indexNames.includes("idx_employees_email_business")) {
         await db.execAsync(`
           CREATE UNIQUE INDEX idx_employees_email_business 
           ON employees(email, business_id) 
           WHERE email IS NOT NULL AND email != '' AND business_id IS NOT NULL
         `);
-        console.log('✅ Created unique index on email+business_id');
+        console.log("✅ Created unique index on email+business_id");
       }
-      
     } catch (constraintError) {
-      console.log('ℹ️ Constraints already exist or cannot be created:', constraintError.message);
+      console.log(
+        "ℹ️ Constraints already exist or cannot be created:",
+        constraintError.message,
+      );
     }
-    
+
     // Get final count
-    const finalCount = await db.getFirstAsync('SELECT COUNT(*) as count FROM employees');
-    
-    return { 
-      success: true, 
+    const finalCount = await db.getFirstAsync(
+      "SELECT COUNT(*) as count FROM employees",
+    );
+
+    return {
+      success: true,
       nullIdsFixed: nullIdEmployees.length,
-      duplicatesCleaned: serverIdDuplicates.length + emailDuplicates.length + remainingDuplicates.length,
-      finalEmployeeCount: finalCount?.count || 0
+      duplicatesCleaned:
+        serverIdDuplicates.length +
+        emailDuplicates.length +
+        remainingDuplicates.length,
+      finalEmployeeCount: finalCount?.count || 0,
     };
   } catch (error) {
-    console.error('❌ Error cleaning duplicate employees:', error);
+    console.error("❌ Error cleaning duplicate employees:", error);
     return { success: false, error: error.message };
   }
 };
@@ -6181,22 +6842,22 @@ export const cleanupDuplicateEmployees = async () => {
 
 export const cleanupDuplicateEmployeesInTransaction = async (transaction) => {
   try {
-    console.log('🧹 Cleaning duplicate employees (within transaction)...');
-    
+    console.log("🧹 Cleaning duplicate employees (within transaction)...");
+
     // Step 1: Find and fix employees without local ID
     const nullIdEmployees = await transaction.getAllAsync(
-      'SELECT ROWID as sqlite_rowid, * FROM employees WHERE id IS NULL OR id = ""'
+      'SELECT ROWID as sqlite_rowid, * FROM employees WHERE id IS NULL OR id = ""',
     );
-    
+
     for (const employee of nullIdEmployees) {
       const newId = nanoid();
       await transaction.runAsync(
-        'UPDATE employees SET id = ? WHERE ROWID = ?',
-        [newId, employee.sqlite_rowid]
+        "UPDATE employees SET id = ? WHERE ROWID = ?",
+        [newId, employee.sqlite_rowid],
       );
       console.log(`✅ Assigned ID ${newId} to employee ${employee.email}`);
     }
-    
+
     // Step 2: Find duplicate employees by server_id
     const serverIdDuplicates = await transaction.getAllAsync(`
       SELECT server_id, COUNT(*) as count
@@ -6205,23 +6866,28 @@ export const cleanupDuplicateEmployeesInTransaction = async (transaction) => {
       GROUP BY server_id 
       HAVING count > 1
     `);
-    
+
     for (const dup of serverIdDuplicates) {
       if (!dup.server_id) continue;
-      const duplicates = await transaction.getAllAsync(`
+      const duplicates = await transaction.getAllAsync(
+        `
         SELECT ROWID as sqlite_rowid, id, server_id, email, updated_at
         FROM employees 
         WHERE server_id = ?
         ORDER BY updated_at DESC
-      `, [dup.server_id]);
-      
+      `,
+        [dup.server_id],
+      );
+
       if (duplicates.length > 1) {
         for (let i = 1; i < duplicates.length; i++) {
-          await transaction.runAsync('DELETE FROM employees WHERE ROWID = ?', [duplicates[i].sqlite_rowid]);
+          await transaction.runAsync("DELETE FROM employees WHERE ROWID = ?", [
+            duplicates[i].sqlite_rowid,
+          ]);
         }
       }
     }
-    
+
     // Step 3: Find duplicate employees by email and business_id
     const emailDuplicates = await transaction.getAllAsync(`
       SELECT email, business_id, COUNT(*) as count
@@ -6230,52 +6896,62 @@ export const cleanupDuplicateEmployeesInTransaction = async (transaction) => {
       GROUP BY email, business_id 
       HAVING count > 1
     `);
-    
+
     for (const dup of emailDuplicates) {
       if (!dup.email || !dup.business_id) continue;
-      const duplicates = await transaction.getAllAsync(`
+      const duplicates = await transaction.getAllAsync(
+        `
         SELECT ROWID as sqlite_rowid, id, email, business_id, updated_at
         FROM employees 
         WHERE email = ? AND business_id = ?
         ORDER BY updated_at DESC
-      `, [dup.email, dup.business_id]);
-      
+      `,
+        [dup.email, dup.business_id],
+      );
+
       if (duplicates.length > 1) {
         for (let i = 1; i < duplicates.length; i++) {
-          await transaction.runAsync('DELETE FROM employees WHERE ROWID = ?', [duplicates[i].sqlite_rowid]);
+          await transaction.runAsync("DELETE FROM employees WHERE ROWID = ?", [
+            duplicates[i].sqlite_rowid,
+          ]);
         }
       }
     }
-    
+
     // Step 4: Add unique indexes (if missing)
-    const indexes = await transaction.getAllAsync("SELECT name FROM sqlite_master WHERE type = 'index'");
-    const indexNames = indexes.map(idx => idx.name);
-    
-    if (!indexNames.includes('idx_employees_server_id')) {
+    const indexes = await transaction.getAllAsync(
+      "SELECT name FROM sqlite_master WHERE type = 'index'",
+    );
+    const indexNames = indexes.map((idx) => idx.name);
+
+    if (!indexNames.includes("idx_employees_server_id")) {
       await transaction.execAsync(`
         CREATE UNIQUE INDEX idx_employees_server_id 
         ON employees(server_id) 
         WHERE server_id IS NOT NULL AND server_id != ''
       `);
     }
-    if (!indexNames.includes('idx_employees_user_business')) {
+    if (!indexNames.includes("idx_employees_user_business")) {
       await transaction.execAsync(`
         CREATE UNIQUE INDEX idx_employees_user_business 
         ON employees(user_id, business_id) 
         WHERE user_id IS NOT NULL AND business_id IS NOT NULL
       `);
     }
-    if (!indexNames.includes('idx_employees_email_business')) {
+    if (!indexNames.includes("idx_employees_email_business")) {
       await transaction.execAsync(`
         CREATE UNIQUE INDEX idx_employees_email_business 
         ON employees(email, business_id) 
         WHERE email IS NOT NULL AND email != '' AND business_id IS NOT NULL
       `);
     }
-    
+
     return { success: true };
   } catch (error) {
-    console.error('❌ Error cleaning duplicate employees in transaction:', error);
+    console.error(
+      "❌ Error cleaning duplicate employees in transaction:",
+      error,
+    );
     throw error;
   }
 };

@@ -27,12 +27,15 @@ import ProductDetailScreen from '../screens/owner/ProductDetailScreen';
 import EditProductScreen from '../screens/owner/EditProductScreen';
 import ReceiptTemplateScreen from '../screens/owner/ReceiptTemplateScreen';
 
-// Import Inventory Screens (NEW)
+// Import Inventory Screens
 import StockMovementsScreen from '../screens/shared/StockMovementsScreen';
 import PriceHistoryScreen from '../screens/shared/PriceHistoryScreen';
 import ViewInventoryScreen from '../screens/shared/ViewInventoryScreen';
 import UpdateStockScreen from '../screens/shared/UpdateStockScreen';
 import RestockItemsScreen from '../screens/shared/RestockItemsScreen';
+
+// Import Inventory Screen (the main inventory dashboard)
+import InventoryScreen from '../screens/shared/InventoryScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -156,8 +159,9 @@ export default function AppNavigator() {
         />
       )}
 
-      {/* Shop Selector for Employees */}
-      {user && user.user_type === 'employee' && !currentEmployeeContext && (
+      {/* Shop Selector - ALWAYS AVAILABLE for any user (to allow switching shops) */}
+      {/* But only include if user exists (to avoid showing before login) */}
+      {user && (
         <Stack.Screen 
           name="ShopSelector" 
           component={ShopSelectorScreen}
@@ -206,7 +210,7 @@ export default function AppNavigator() {
             component={EditProductScreen}
           />
 
-          {/* Notifications & Messages (NEW) */}
+          {/* Notifications & Messages */}
           <Stack.Screen 
             name="Notifications" 
             component={NotificationsScreen}
@@ -220,7 +224,7 @@ export default function AppNavigator() {
             component={ReceiptTemplateScreen}
           />
 
-          {/* Inventory Management Screens (NEW) */}
+          {/* Inventory Management Screens */}
           <Stack.Screen 
             name="StockMovements" 
             component={StockMovementsScreen}
@@ -240,6 +244,10 @@ export default function AppNavigator() {
           <Stack.Screen 
             name="RestockItems" 
             component={RestockItemsScreen}
+          />
+          <Stack.Screen 
+            name="Inventory" 
+            component={InventoryScreen}
           />
         </>
       )}

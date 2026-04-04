@@ -286,14 +286,36 @@ class ProductSyncService {
   // Helper method to sync product from server
   async syncProductFromServer(db, productData, businessId, userId) {
     try {
-      const existingProduct = await db.getFirstAsync(
+      const now = new Date().toISOString();
+
+      // --- 1. Normalise barcode: empty string -> NULL ---
+      let baseBarcode = productData.base_barcode;
+      if (baseBarcode === "" || baseBarcode === null) {
+        baseBarcode = null;
+      }
+
+      // --- 2. Check for existing product by server_id ---
+      let existingProduct = await db.getFirstAsync(
         "SELECT id FROM products WHERE server_id = ?",
         [productData.id],
       );
 
-      const now = new Date().toISOString();
+      // --- 3. If not found, check by barcode + business ---
+      if (!existingProduct && baseBarcode) {
+        existingProduct = await db.getFirstAsync(
+          `SELECT id FROM products 
+         WHERE base_barcode = ? 
+           AND (business_id = ? OR business_server_id = ?)`,
+          [baseBarcode, businessId, productData.business_id],
+        );
+        if (existingProduct) {
+          console.log(
+            `⚠️ Found existing product with same barcode "${baseBarcode}" for business ${businessId}. Updating instead of creating new.`,
+          );
+        }
+      }
 
-      // Find category ID
+      // --- 4. Find category ID (if any) ---
       let categoryId = null;
       if (productData.category_id) {
         const category = await db.getFirstAsync(
@@ -303,7 +325,7 @@ class ProductSyncService {
         categoryId = category?.id || null;
       }
 
-      // Find tax ID
+      // --- 5. Find tax ID (if any) ---
       let taxId = null;
       if (productData.tax_id) {
         const tax = await db.getFirstAsync(
@@ -314,25 +336,44 @@ class ProductSyncService {
       }
 
       if (existingProduct) {
+        // --- Update existing product ---
         await db.runAsync(
           `UPDATE products SET 
-           business_id = ?, name = ?, description = ?, category_id = ?,
-           product_type = ?, has_variants = ?, variant_type = ?,
-           base_barcode = ?, base_sku = ?, base_cost_price = ?,
-           base_selling_price = ?, base_wholesale_price = ?, tax_id = ?,
-           tax_inclusive = ?, unit_of_measure = ?, reorder_level = ?,
-           is_trackable = ?, is_active = ?, updated_at = ?
-           WHERE server_id = ?`,
+          business_id = ?,
+          business_server_id = ?,
+          name = ?,
+          description = ?,
+          category_id = ?,
+          product_type = ?,
+          has_variants = ?,
+          variant_type = ?,
+          base_barcode = ?,
+          base_sku = ?,
+          base_cost_price = ?,
+          base_selling_price = ?,
+          base_wholesale_price = ?,
+          tax_id = ?,
+          tax_inclusive = ?,
+          unit_of_measure = ?,
+          reorder_level = ?,
+          is_trackable = ?,
+          is_active = ?,
+          updated_at = ?,
+          synced_at = ?,
+          sync_status = 'synced',
+          is_dirty = 0
+        WHERE id = ?`,
           [
             businessId,
+            productData.business_id, // server business ID
             productData.name,
             productData.description || "",
             categoryId,
             productData.product_type || "physical",
             productData.has_variants ? 1 : 0,
             productData.variant_type || "none",
-            productData.base_barcode || "",
-            productData.base_sku || "",
+            baseBarcode,
+            productData.base_sku || null,
             productData.base_cost_price || null,
             productData.base_selling_price || null,
             productData.base_wholesale_price || null,
@@ -343,29 +384,36 @@ class ProductSyncService {
             productData.is_trackable ? 1 : 0,
             1,
             now,
-            productData.id,
+            now,
+            existingProduct.id,
           ],
         );
+        console.log(`✅ Updated product: ${productData.name}`);
+        return { success: true, id: existingProduct.id, action: "updated" };
       } else {
+        // --- Insert new product ---
+        const productId = nanoid(); // ✅ FIXED: use nanoid instead of this.generateId()
         await db.runAsync(
-          `INSERT INTO products (id, server_id, business_id, name, description, category_id,
-           product_type, has_variants, variant_type, base_barcode, base_sku,
-           base_cost_price, base_selling_price, base_wholesale_price, tax_id,
-           tax_inclusive, unit_of_measure, reorder_level, is_trackable, is_active,
-           created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO products (
+          id, server_id, business_id, business_server_id, name, description, category_id,
+          product_type, has_variants, variant_type, base_barcode, base_sku,
+          base_cost_price, base_selling_price, base_wholesale_price, tax_id,
+          tax_inclusive, unit_of_measure, reorder_level, is_trackable, is_active,
+          created_at, updated_at, synced_at, sync_status, is_dirty
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
-            nanoid(),
+            productId,
             productData.id,
             businessId,
+            productData.business_id,
             productData.name,
             productData.description || "",
             categoryId,
             productData.product_type || "physical",
             productData.has_variants ? 1 : 0,
             productData.variant_type || "none",
-            productData.base_barcode || "",
-            productData.base_sku || "",
+            baseBarcode,
+            productData.base_sku || null,
             productData.base_cost_price || null,
             productData.base_selling_price || null,
             productData.base_wholesale_price || null,
@@ -377,10 +425,14 @@ class ProductSyncService {
             1,
             productData.created_at || now,
             now,
+            now,
+            "synced",
+            0,
           ],
         );
+        console.log(`✅ Saved product: ${productData.name}`);
+        return { success: true, id: productId, action: "created" };
       }
-      console.log(`✅ Saved product: ${productData.name}`);
     } catch (error) {
       console.error(`❌ Error saving product ${productData.name}:`, error);
       throw error;

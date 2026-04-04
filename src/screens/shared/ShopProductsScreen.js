@@ -765,6 +765,7 @@ export default function ShopProductsScreen({ navigation }) {
       <SafeAreaView style={styles.container}>
         <CustomHeader
           title="Products"
+          showBackButton={true}
           rightComponent={renderHeaderRight()}
         />
         <View style={styles.loadingContainer}>
@@ -790,6 +791,7 @@ export default function ShopProductsScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       <CustomHeader
         title="Products"
+        showBackButton={true}
         rightComponent={renderHeaderRight()}
       />
 

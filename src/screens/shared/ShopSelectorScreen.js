@@ -5,302 +5,134 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
   SafeAreaView,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../context/AuthContext';
+import CustomHeader from '../../components/CustomHeader';
+import { useShop } from '../../context/ShopContext';
 import { useBusiness } from '../../context/BusinessContext';
 import databaseService from '../../database';
 
 export default function ShopSelectorScreen({ navigation }) {
-  const { user, logout } = useAuth();               // logout from AuthContext
-  const { selectShop } = useBusiness();             // selectShop from BusinessContext
-  const [shops, setShops] = useState([]);
+  const { currentShop, selectShop } = useShop();
+  const { currentBusiness } = useBusiness();
   const [loading, setLoading] = useState(true);
-  const [selectedShop, setSelectedShop] = useState(null);
+  const [shopList, setShopList] = useState([]);
 
   useEffect(() => {
-    loadEmployeeShops();
-  }, []);
+    loadShopList();
+  }, [currentBusiness]);
 
-  const loadEmployeeShops = async () => {
+  const loadShopList = async () => {
+    setLoading(true);
     try {
-      console.log('📋 Loading shops for employee:', user?.username);
-      
-      // Get shops where user is an employee (pass the user ID)
-      const employeeShops = await databaseService.ShopService.getUserShops(user.id);
-      
-      console.log('🏪 Employee shops found:', employeeShops?.length || 0);
-      
-      if (employeeShops && employeeShops.length > 0) {
-        setShops(employeeShops);
-        
-        // Auto-select if only one shop
-        if (employeeShops.length === 1) {
-          handleSelectShop(employeeShops[0]);
-        }
+      let list = [];
+      if (currentBusiness) {
+        list = await databaseService.ShopService.getShopsByBusiness(currentBusiness.id);
       } else {
-        Alert.alert(
-          'No Shop Access',
-          'You are not assigned to any shop. Please contact your manager.',
-          [{ text: 'OK', onPress: () => navigation.replace('Landing') }]
-        );
+        // Fallback: get first business for current user
+        const user = await databaseService.UserService.getCurrentUser();
+        if (user) {
+          const businesses = await databaseService.BusinessService.getBusinessesByOwner(user.id);
+          if (businesses.length > 0) {
+            list = await databaseService.ShopService.getShopsByBusiness(businesses[0].id);
+          }
+        }
       }
+      setShopList(list);
     } catch (error) {
-      console.error('❌ Error loading shops:', error);
-      Alert.alert('Error', 'Failed to load shops. Please try again.');
+      console.error('Error loading shops:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSelectShop = async (shop) => {
-    try {
-      setSelectedShop(shop.id);
-      
-      // Select shop using BusinessContext
-      const result = await selectShop(shop.id);
-      
-      if (result.success) {
-        console.log('✅ Shop selected:', shop.name);
-        navigation.replace('Main');
-      } else {
-        Alert.alert('Error', result.error || 'Failed to select shop');
-        setSelectedShop(null);
-      }
-    } catch (error) {
-      console.error('❌ Error selecting shop:', error);
-      Alert.alert('Error', 'Failed to select shop. Please try again.');
-      setSelectedShop(null);
+    const success = await selectShop(shop.id);
+    if (success) {
+      navigation.goBack();
+    } else {
+      alert('Failed to select shop');
     }
   };
 
-  const renderShopItem = ({ item }) => (
+  const renderItem = ({ item }) => (
     <TouchableOpacity
-      style={[
-        styles.shopCard,
-        selectedShop === item.id && styles.selectedShopCard,
-      ]}
+      style={[styles.shopItem, currentShop?.id === item.id && styles.selectedShop]}
       onPress={() => handleSelectShop(item)}
-      disabled={selectedShop === item.id}
     >
-      <View style={styles.shopIconContainer}>
-        <Ionicons 
-          name="business" 
-          size={32} 
-          color={selectedShop === item.id ? '#FF6B00' : '#9ca3af'} 
-        />
-      </View>
-      
       <View style={styles.shopInfo}>
-        <Text style={styles.shopName}>{item.name}</Text>
-        <Text style={styles.businessName}>{item.business_name}</Text>
-        <Text style={styles.shopLocation}>{item.location}</Text>
-        
-        {item.role && (
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>{item.role}</Text>
-          </View>
-        )}
+        <Ionicons name="storefront" size={24} color={currentShop?.id === item.id ? '#FF6B00' : '#6B7280'} />
+        <View style={styles.shopDetails}>
+          <Text style={styles.shopName}>{item.name}</Text>
+          {item.location && <Text style={styles.shopLocation}>{item.location}</Text>}
+        </View>
       </View>
-      
-      <Ionicons 
-        name="chevron-forward" 
-        size={24} 
-        color="#9ca3af" 
-      />
+      {currentShop?.id === item.id && (
+        <Ionicons name="checkmark-circle" size={24} color="#FF6B00" />
+      )}
     </TouchableOpacity>
   );
 
-  const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Logout', 
-          onPress: async () => {
-            await logout();          // clear authentication state
-            navigation.replace('Landing'); // go back to the landing screen
-          }
-        }
-      ]
-    );
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF6B00" />
-        <Text style={styles.loadingText}>Loading your shops...</Text>
-      </View>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Select a Shop</Text>
-        <Text style={styles.subtitle}>
-          Choose which shop you want to work in today
-        </Text>
-      </View>
-
-      {shops.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="business-outline" size={64} color="#9ca3af" />
-          <Text style={styles.emptyStateText}>
-            No shops assigned to you yet
+      <CustomHeader title="Select Shop" showBack />
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FF6B00" />
+          <Text style={styles.loadingText}>Loading shops...</Text>
+        </View>
+      ) : shopList.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="storefront-outline" size={64} color="#D1D5DB" />
+          <Text style={styles.emptyText}>No Shops Found</Text>
+          <Text style={styles.emptySubtext}>
+            Create a shop for your business to manage inventory.
           </Text>
-          <Text style={styles.emptyStateSubtext}>
-            Contact your manager to get access to a shop
-          </Text>
+          <TouchableOpacity
+            style={styles.createButton}
+            onPress={() => navigation.navigate('AddShop')}
+          >
+            <Text style={styles.createButtonText}>Create Shop</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
-          data={shops}
-          renderItem={renderShopItem}
+          data={shopList}
+          renderItem={renderItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
       )}
-
-      <View style={styles.footer}>
-        <TouchableOpacity 
-          style={styles.logoutButton}
-          onPress={handleLogout}
-        >
-          <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 12, fontSize: 16, color: '#6B7280' },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
+  emptyText: { fontSize: 18, fontWeight: '600', color: '#1F2937', marginTop: 16 },
+  emptySubtext: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginTop: 8 },
+  createButton: { marginTop: 24, backgroundColor: '#FF6B00', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
+  createButtonText: { color: '#FFFFFF', fontWeight: '600' },
+  listContent: { paddingVertical: 8 },
+  shopItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  loadingText: {
-    marginTop: 20,
-    fontSize: 16,
-    color: '#6c757d',
-  },
-  header: {
-    padding: 20,
-    paddingTop: 40,
-    backgroundColor: '#fff',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    borderBottomColor: '#E5E7EB',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#212529',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6c757d',
-  },
-  listContent: {
-    padding: 20,
-  },
-  shopCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  selectedShopCard: {
-    borderColor: '#FF6B00',
-    borderWidth: 2,
-    backgroundColor: '#FFF7F0',
-  },
-  shopIconContainer: {
-    marginRight: 16,
-  },
-  shopInfo: {
-    flex: 1,
-  },
-  shopName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#212529',
-    marginBottom: 4,
-  },
-  businessName: {
-    fontSize: 14,
-    color: '#6c757d',
-    marginBottom: 2,
-  },
-  shopLocation: {
-    fontSize: 13,
-    color: '#868e96',
-    marginBottom: 8,
-  },
-  roleBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#e7f5ff',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  roleText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1c7ed6',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyStateText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#495057',
-    marginTop: 20,
-    marginBottom: 8,
-  },
-  emptyStateSubtext: {
-    fontSize: 14,
-    color: '#868e96',
-    textAlign: 'center',
-  },
-  footer: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
-    backgroundColor: '#fff',
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-  },
-  logoutText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FF3B30',
-    marginLeft: 8,
-  },
+  selectedShop: { backgroundColor: '#FFF7F0' },
+  shopInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  shopDetails: { marginLeft: 12, flex: 1 },
+  shopName: { fontSize: 16, fontWeight: '600', color: '#1F2937' },
+  shopLocation: { fontSize: 14, color: '#6B7280', marginTop: 2 },
 });
